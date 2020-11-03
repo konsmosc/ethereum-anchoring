@@ -1,7 +1,9 @@
-pragma solidity >= 0.5.0 < 0.7.0;
+pragma solidity >= 0.5.0 <= 0.7.4;
 pragma experimental ABIEncoderV2;
 
 contract AnchorContract {
+
+    event InvokeStatus(uint indexed statusCode);
 
     struct AnchorHash {
         string newHashLinkSSI;
@@ -26,6 +28,7 @@ contract AnchorContract {
 
     }
 
+
     // public function
     function addAnchor(string memory anchorID, string memory keySSIType, string memory controlString,
         string memory vn, string memory newHashLinkSSI, string memory ZKPValue, string memory lastHashLinkSSI,
@@ -34,12 +37,64 @@ contract AnchorContract {
             //todo : add error management
             //todo : add new mapping between anchorID and controlString
             //todo : use controlString if is already defined for anchorID and ignore the parameter
+            int validateAnchorContinuityResult = validateAnchorContinuity(anchorID, lastHashLinkSSI);
+            if (validateAnchorContinuityResult == 0)
+            {
+                //hash link are out of sync
+                emit InvokeStatus(100);
+                return;
+            }
+
+            if (validateAnchorContinuityResult == -1)
+            {
+                //anchor is new and we must check controlString
+                if (isStringEmpty(controlString))
+                {
+                    emit InvokeStatus(101);
+                    return;
+                }
+            }
+
+
+
             //create new anchor value
             AnchorValue memory anchorValue = buildAnchorValue(newHashLinkSSI,lastHashLinkSSI,ZKPValue);
             anchorStorage.push(anchorValue);
             uint versionIndex = anchorStorage.length - 1;
             //update number of versions available for that anchor
             anchorVersions[anchorID].push(versionIndex);
+            //all done, invoke ok status
+            emit InvokeStatus(200);
+    }
+
+    function isStringEmpty(string memory data) private pure returns (bool)
+    {
+        bytes memory bdata = bytes(data);
+        if (bdata.length == 0)
+        {
+            return true;
+        }
+        return false;
+    }
+
+    function validateAnchorContinuity(string memory anchorID, string memory lastHashLinkSSI) private view returns (int)
+    {
+        if (anchorVersions[anchorID].length == 0)
+        {
+            //first anchor to be added
+            return -1;
+        }
+        uint index = anchorVersions[anchorID][anchorVersions[anchorID].length-1];
+
+        //can import StringUtils contract or compare hashes
+        //hash compare seems faster
+        if (sha256(bytes(anchorStorage[index].hash.newHashLinkSSI)) == sha256(bytes(lastHashLinkSSI)))
+        {
+            //last hash link from contract is a match with the one passed
+            return 1;
+        }
+        //hash link is out of sync. the last hash link stored doesnt match with the last hash link passed
+        return 0;
     }
 
     function buildAnchorValue(string memory newHashLinkSSI, string memory lastHashLinkSSI, string memory ZKPValue) private pure returns (AnchorValue memory){
@@ -64,6 +119,7 @@ contract AnchorContract {
         }
 
         return result;
+
     }
 
 }
