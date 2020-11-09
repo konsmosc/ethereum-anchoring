@@ -1,0 +1,16 @@
+#from node:12
+FROM node:12-alpine
+
+
+RUN apk add yarn
+RUN yarn global add truffle
+
+
+# Create app directory
+WORKDIR /usr/node/app
+COPY package*.json ./
+RUN npm install
+COPY . .
+
+CMD [ "truffle", "migrate" ]
+

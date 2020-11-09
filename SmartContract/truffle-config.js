@@ -5,11 +5,14 @@ module.exports = {
 
   networks: {
     development: {
-      host: "127.0.0.1",
+      host: "172.20.196.241",
       port: 8545,
       network_id: "*",
       gas: 4712388,
-      gasPrice: 100000000000
+      gasPrice: 0,
+      from: "0x66d66805E29EaB59901f8B7c4CAE0E38aF31cb0e",
+      password: "lst7upm",
+      type: "quorum"
     }
     
   },

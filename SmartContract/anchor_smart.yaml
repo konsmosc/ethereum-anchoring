@@ -1,0 +1,14 @@
+apiVersion: v1
+
+kind: Pod
+
+metadata:
+  name: anchorsmart
+  labels:
+    app: anchorsmart
+
+spec:
+  containers:
+    - name: anchorsmart-container
+      image: mabdockerid/anchor_smart:latest
+      imagePullPolicy: Always

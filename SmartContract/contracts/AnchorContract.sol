@@ -37,7 +37,7 @@ contract AnchorContract {
             //todo : add error management
             //todo : add new mapping between anchorID and controlString
             //todo : use controlString if is already defined for anchorID and ignore the parameter
-            int validateAnchorContinuityResult = validateAnchorContinuity(anchorID, lastHashLinkSSI);
+            int validateAnchorContinuityResult = validateAnchorContinuity(anchorID, lastHashLinkSSI, newHashLinkSSI);
             if (validateAnchorContinuityResult == 0)
             {
                 //hash link are out of sync
@@ -77,7 +77,7 @@ contract AnchorContract {
         return false;
     }
 
-    function validateAnchorContinuity(string memory anchorID, string memory lastHashLinkSSI) private view returns (int)
+    function validateAnchorContinuity(string memory anchorID, string memory lastHashLinkSSI, string memory newHashLinkSSI) private view returns (int)
     {
         if (anchorVersions[anchorID].length == 0)
         {
@@ -90,6 +90,12 @@ contract AnchorContract {
         //hash compare seems faster
         if (sha256(bytes(anchorStorage[index].hash.newHashLinkSSI)) == sha256(bytes(lastHashLinkSSI)))
         {
+            //ensure we dont get double hashLinkSSI
+            if (sha256(bytes(newHashLinkSSI)) == sha256(bytes(lastHashLinkSSI)))
+            {
+                //raise out of sync. the hashlinks should be different, except 1st anchor
+                return 0;
+            }
             //last hash link from contract is a match with the one passed
             return 1;
         }
