@@ -1,0 +1,1 @@
+const webServer = require('./webserver')();

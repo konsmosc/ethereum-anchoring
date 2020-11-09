@@ -1,0 +1,23 @@
+{
+  "name": "AnchorContract",
+  "version": "1.0.0",
+  "description": "Anchor API",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "web3": "^1.2.9",
+    "web3-eth-contract": "^1.2.9",
+    "express": "^4.17.1",
+    "dotenv": "^8.2.0",
+    "base58-universal": "^1.0.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "start": "node index.js",
+    "start-dev": "node -r dotenv/config index.js"
+  },
+  "author": "Mastahac Bogdan",
+  "license": "ISC"
+}

@@ -1,0 +1,38 @@
+apiVersion: v1
+
+kind: Pod
+
+metadata:
+  name: apiadapter
+  labels:
+    app: apiadapter
+
+spec:
+  containers:
+    - name: apiadapter-container
+      image: mabdockerid/apiadapter:latest
+      ports:
+        - containerPort: 3000
+      imagePullPolicy: Always
+
+---
+
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: apiadapter-service
+  labels:
+    name: apiadapter-service
+
+spec:
+  selector:
+    app: apiadapter
+
+  ports:
+    - port: 3000
+      targetPort: 3000
+
+  type: LoadBalancer
+
+
