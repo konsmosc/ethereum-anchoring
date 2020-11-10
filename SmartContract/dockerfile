@@ -12,5 +12,6 @@ COPY package*.json ./
 RUN npm install
 COPY . .
 
-CMD [ "truffle", "migrate" ]
+CMD [ "sh","-c", "truffle migrate && sleep 2000" ]
+#CMD [ "truffle", "migrate" ]
 

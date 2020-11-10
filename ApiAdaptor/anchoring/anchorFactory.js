@@ -1,7 +1,6 @@
-module.exports = function Factory(rpcAddress, contractAddress, abi) {
+module.exports = function Factory(rpcAddress, contractAddress, abi, account) {
     this.web3 = buildFactory(rpcAddress, contractAddress, abi);
     this.contract = new this.web3.eth.Contract(abi, contractAddress);
-
 
     function buildFactory(rpcAddress) {
         const Web3 = require('web3');

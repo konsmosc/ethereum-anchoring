@@ -8,6 +8,7 @@ metadata:
     app: anchorsmart
 
 spec:
+  restartPolicy: "Never"
   containers:
     - name: anchorsmart-container
       image: mabdockerid/anchor_smart:latest

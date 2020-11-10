@@ -44,7 +44,7 @@ function configureHeaders(webServer) {
 
 function configureAddAnchorEntryPoints(webServer, config) {
     const factory = require('./anchoring/anchorFactory');
-    const anchorFactory = new factory(config.rpcAddress, config.contractAddress, config.abi);
+    const anchorFactory = new factory(config.rpcAddress, config.contractAddress, config.abi, config.account);
     const addAnchorHandler = require("./controllers/addAnchor")(anchorFactory, config.account);
     webServer.use("/addAnchor/*", requestBodyJSONMiddleware);
     webServer.put("/addAnchor/:keySSI", addAnchorHandler);
@@ -52,7 +52,7 @@ function configureAddAnchorEntryPoints(webServer, config) {
 
 function configureGetAnchorVersionsEntryPoints(webServer, config) {
     const factory = require('./anchoring/anchorFactory');
-    const anchorFactory = new factory(config.rpcAddress, config.contractAddress, config.abi);
+    const anchorFactory = new factory(config.rpcAddress, config.contractAddress, config.abi, config.account);
     const getVersionsHandler = require("./controllers/getVersions")(anchorFactory);
     webServer.use("/getAnchorVersions/*", requestBodyJSONMiddleware);
     webServer.get("/getAnchorVersions/:keySSI", getVersionsHandler);
@@ -64,6 +64,7 @@ module.exports = function () {
     const port = process.env.PORT === undefined ? 3000 : process.env.PORT;
     const config = require("./utils/config");
     const scConfig = new config();
+    console.log("Configuration file used at runtime : ", scConfig);
     this.webServer = express();
 
     this.webServer.listen(port);

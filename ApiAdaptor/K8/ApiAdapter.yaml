@@ -11,9 +11,17 @@ spec:
   containers:
     - name: apiadapter-container
       image: mabdockerid/apiadapter:latest
+      env:
+        - name: CONTRACT_ADDRESS
+          value: "0x4D3D3B2922492093706d7f96FAd87DA99eC91A56"
+        - name: RPC_ADDRESS
+          value: "http://172.20.181.138:8545"
+        - name: ACCOUNT
+          value: "0x25211bfc3e3d5cc76f79841a0d43dd180c0ee5a7"
       ports:
         - containerPort: 3000
       imagePullPolicy: Always
+
 
 ---
 

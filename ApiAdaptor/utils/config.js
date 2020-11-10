@@ -15,9 +15,32 @@ function getConfig() {
 
 module.exports = function Config() {
     const config = getConfig();
-    this.contractAddress = config.contractAddress;
-    this.rpcAddress = config.rpcAddress;
+    let contractAddress;
+    if (typeof process.env.CONTRACT_ADDRESS !== undefined)
+    {
+        contractAddress =  process.env.CONTRACT_ADDRESS;
+    }else {
+        contractAddress = config.contractAddress;
+    }
+    let rpcAddress;
+    if (typeof process.env.RPC_ADDRESS !== undefined)
+    {
+        rpcAddress =  process.env.RPC_ADDRESS;
+    }else {
+        rpcAddress = config.rpcAddress;
+    }
+
+    let account;
+    if (typeof process.env.ACCOUNT !== undefined)
+    {
+        account =  process.env.ACCOUNT;
+    }else {
+        account = config.account;
+    }
+
+    this.contractAddress = contractAddress;
+    this.rpcAddress = rpcAddress;
     this.abi = JSON.parse(config.abi);
-    this.account = config.account;
+    this.account = account;
     return this;
 }
