@@ -113,5 +113,9 @@ describe('Anchor Contract', () => {
         });
 
         assert.equal(result2.events.InvokeStatus.returnValues.statusCode, 200);
+
+        require("../../../privatesky/psknode/bundles/consoleTools");
+        require("../../../privatesky/psknode/bundles/openDSU");
+        require("opendsu").loadApi("")
     })
 });
