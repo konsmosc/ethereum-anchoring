@@ -1,0 +1,19 @@
+{
+  "name": "ethereum-anchoring",
+  "version": "1.0.0",
+  "description": "[![SmartContractTests Actions Status](https://github.com/PharmaLedger-IMI/ethereum-anchoring/workflows/SmartContractTests/badge.svg)](https://github.com/PharmaLedger-IMI/ethereum-anchoring/actions)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PharmaLedger-IMI/ethereum-anchoring.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/PharmaLedger-IMI/ethereum-anchoring/issues"
+  },
+  "homepage": "https://github.com/PharmaLedger-IMI/ethereum-anchoring#readme"
+}
