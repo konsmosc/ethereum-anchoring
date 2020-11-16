@@ -4,6 +4,15 @@ module.exports = {
   
 
   networks: {
+    internal: {
+      host: "localhost",
+      port: 8545,
+      network_id: "*",
+      gas: 4712388,
+      gasPrice: 300000,
+      from: "0xD0efF86F1e68f8e431aa8F999797c0Aa7427e917",
+
+    },
     development: {
       host: "172.20.119.173",
       port: 8545,
