@@ -1,0 +1,1 @@
+Before building the docker image, update the truffle-config.js ->development ->host to the Cluster-IP of the Node-1 from Quorum network. Use kubectl get services to see the ip's of each node.
