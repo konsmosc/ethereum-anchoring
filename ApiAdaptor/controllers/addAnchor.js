@@ -41,9 +41,9 @@ function createAddAnchorHandler(anchorFactory, account) {
             //  console.log(keySSI);
             //  console.log({controlSubstring,versionNumber,keySSIType});
             require("../anchoring/addAnchorSmartContract")(anchorFactory.contract, account,
-                anchorID, keySSIType, controlSubstring,
+                anchorID, keySSIType, '0x'+controlSubstring,
                 versionNumber, newHashLinkSSI, "ZKPValue", lastHashLinkSSI,
-                "signature", "publicKey",
+                "0x00AA", "0x00AA",
                 (err, result) => {
 
                     if (err) {

@@ -16,23 +16,26 @@ function getConfig() {
 module.exports = function Config() {
     const config = getConfig();
     let contractAddress;
-    if (typeof process.env.CONTRACT_ADDRESS !== undefined)
+    if (typeof process.env.CONTRACT_ADDRESS !== "undefined")
     {
+        console.log('Using env CONTRACT_ADDRESS : ', process.env.CONTRACT_ADDRESS, typeof process.env.CONTRACT_ADDRESS);
         contractAddress =  process.env.CONTRACT_ADDRESS;
     }else {
         contractAddress = config.contractAddress;
     }
     let rpcAddress;
-    if (typeof process.env.RPC_ADDRESS !== undefined)
+    if (typeof process.env.RPC_ADDRESS !== "undefined")
     {
+        console.log('Using env RPC_ADDRESS : ', process.env.RPC_ADDRESS);
         rpcAddress =  process.env.RPC_ADDRESS;
     }else {
         rpcAddress = config.rpcAddress;
     }
 
     let account;
-    if (typeof process.env.ACCOUNT !== undefined)
+    if (typeof process.env.ACCOUNT !== "undefined")
     {
+        console.log('Using env ACCOUNT : ', process.env.ACCOUNT);
         account =  process.env.ACCOUNT;
     }else {
         account = config.account;

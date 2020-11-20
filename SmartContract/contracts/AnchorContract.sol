@@ -28,7 +28,7 @@ contract AnchorContract {
     mapping (string => uint[]) anchorVersions;
 
     //mapping between anchorID and controlString.
-    mapping (string => string) anchorControlStrings;
+    mapping (string => bytes32) anchorControlStrings;
 
 
 
@@ -39,7 +39,7 @@ contract AnchorContract {
 
 
     // public function
-    function addAnchor(string memory anchorID, string memory keySSIType, string memory controlString,
+    function addAnchor(string memory anchorID, string memory keySSIType, bytes32 controlString,
         string memory vn, string memory newHashLinkSSI, string memory ZKPValue, string memory lastHashLinkSSI,
         bytes memory signature, bytes memory publicKey) public {
             //todo : implementa validation process
@@ -57,7 +57,7 @@ contract AnchorContract {
             if (validateAnchorContinuityResult == -1)
             {
                 //anchor is new and we must check controlString
-                if (isStringEmpty(controlString))
+                if (isEmptyBytes32(controlString))
                 {
                     emit InvokeStatus(statusControlStringEmptyOnNewAnchor);
                     return;
@@ -93,46 +93,19 @@ contract AnchorContract {
             emit InvokeStatus(statusOK);
     }
 
-    function isStringEmpty(string memory data) private pure returns (bool)
+
+
+
+    function validatePublicKeyAndControlString(bytes memory publicKey,bytes32 controlString) public returns (bool)
     {
-        bytes memory bdata = bytes(data);
-        if (bdata.length == 0)
-        {
-            return true;
-        }
-        return false;
+        return (sha256(publicKey) == controlString);
     }
 
-
-
-    function stringToBytes32(string memory source) public pure returns (bytes32 result) {
-        bytes memory tempEmptyStringTest = bytes(source);
-        if (tempEmptyStringTest.length == 0) {
-            return 0x0;
-        }
-
-        assembly {
-            result := mload(add(source, 32))
-        }
-    }
-
-    function validatePublicKeyAndControlString(bytes memory publicKey,string memory controlString) public returns (bool)
-    {
-        return (sha256(publicKey) == stringToBytes32(controlString));
-    }
-    function v2(string memory controlString) public returns (bytes32)
-    {
-        return stringToBytes32(controlString);
-    }
-    function v1(bytes memory publicKey) public returns (bytes32)
-    {
-        return sha256(publicKey);
-    }
 
     function validatePublicKeyHash(bytes memory publicKey, string memory anchorID) public returns (int)
     {
-        string memory controlString =  anchorControlStrings[anchorID];
-        if (sha256(publicKey) == stringToBytes32(controlString))
+        bytes32 controlString =  anchorControlStrings[anchorID];
+        if (validatePublicKeyAndControlString(publicKey,controlString))
         {
             //we have match. All is ok.
             return 1;
@@ -291,4 +264,33 @@ contract AnchorContract {
 
     }
 
+
+    //utility functions
+
+    function isEmptyBytes32(bytes32 data) public pure returns (bool)
+    {
+        return data[0] == 0;
+    }
+
+    function isStringEmpty(string memory data) private pure returns (bool)
+    {
+        bytes memory bdata = bytes(data);
+        if (bdata.length == 0)
+        {
+            return true;
+        }
+        return false;
+    }
+
+
+    function stringToBytes32(string memory source) private pure returns (bytes32 result) {
+        bytes memory tempEmptyStringTest = bytes(source);
+        if (tempEmptyStringTest.length == 0) {
+            return 0x0;
+        }
+
+        assembly {
+            result := mload(add(source, 32))
+        }
+    }
 }
