@@ -12,8 +12,10 @@ spec:
     - name: apiadapter-container
       image: mabdockerid/apiadapter:latest
       env:
+      # contract address obtained from external/smartcontractaddress.txt from SmartContract docker
         - name: CONTRACT_ADDRESS
           value: "0x4D3D3B2922492093706d7f96FAd87DA99eC91A56"
+      # cluster ip on the Qourum Node 2
         - name: RPC_ADDRESS
           value: "http://172.20.181.138:8545"
         - name: ACCOUNT

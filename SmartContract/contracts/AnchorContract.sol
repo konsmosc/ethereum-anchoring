@@ -41,7 +41,7 @@ contract AnchorContract {
     // public function
     function addAnchor(string memory anchorID, string memory keySSIType, string memory controlString,
         string memory vn, string memory newHashLinkSSI, string memory ZKPValue, string memory lastHashLinkSSI,
-        string memory signature, string memory publicKey) public {
+        bytes memory signature, bytes memory publicKey) public {
             //todo : implementa validation process
             //todo : add error management
             //todo : add new mapping between anchorID and controlString
@@ -67,18 +67,20 @@ contract AnchorContract {
             }
 
             //validate hash of the publicKey
-            if (validatePublicKeyHash(publicKey,anchorID) == -1)
-            {
-                emit InvokeStatus(statusHashOfPublicKeyDoesntMatchControlString);
-                return;
-            }
+            //todo : enable
+            //if (validatePublicKeyHash(publicKey,anchorID) == -1)
+            //{
+                //emit InvokeStatus(statusHashOfPublicKeyDoesntMatchControlString);
+                //return;
+            //}
 
             //validate signature
-            if (validateHashSignature(anchorID, newHashLinkSSI,ZKPValue,lastHashLinkSSI, signature) == -1)
-            {
-                emit InvokeStatus(statusSignatureCheckFailed);
-                return;
-            }
+            //todo : enable
+            //if (!validateSignature(anchorID, newHashLinkSSI,ZKPValue,lastHashLinkSSI, signature,publicKey))
+            //{
+                //emit InvokeStatus(statusSignatureCheckFailed);
+                //return;
+            //}
 
             //create new anchor value
             AnchorValue memory anchorValue = buildAnchorValue(newHashLinkSSI,lastHashLinkSSI,ZKPValue);
@@ -103,21 +105,44 @@ contract AnchorContract {
 
 
 
+    function stringToBytes32(string memory source) public pure returns (bytes32 result) {
+        bytes memory tempEmptyStringTest = bytes(source);
+        if (tempEmptyStringTest.length == 0) {
+            return 0x0;
+        }
 
-    function validatePublicKeyHash(string memory publicKey, string memory anchorID) private returns (int)
+        assembly {
+            result := mload(add(source, 32))
+        }
+    }
+
+    function validatePublicKeyAndControlString(bytes memory publicKey,string memory controlString) public returns (bool)
+    {
+        return (sha256(publicKey) == stringToBytes32(controlString));
+    }
+    function v2(string memory controlString) public returns (bytes32)
+    {
+        return stringToBytes32(controlString);
+    }
+    function v1(bytes memory publicKey) public returns (bytes32)
+    {
+        return sha256(publicKey);
+    }
+
+    function validatePublicKeyHash(bytes memory publicKey, string memory anchorID) public returns (int)
     {
         string memory controlString =  anchorControlStrings[anchorID];
-        if (sha256(bytes(publicKey)) == sha256(bytes(controlString)))
+        if (sha256(publicKey) == stringToBytes32(controlString))
         {
             //we have match. All is ok.
             return 1;
         }
 
         //validation failed
-        return 0;
+        return -1;
     }
 
-    function recover(bytes32 hash, bytes memory signature) public pure returns (address)
+    function recover(bytes32 hash, bytes memory signature) private pure returns (address)
     {
         bytes32 r;
         bytes32 s;
@@ -152,81 +177,67 @@ contract AnchorContract {
         }
     }
 
-   // function verifySignature() public pure returns (bool) {
-   //     bytes32 message = 0x2b350a58f723b94ef3992ad0d3046f2398aef2fe117dc3a36737fb29df4a706a;
-   //     bytes memory sig = hex"e6ca6508de09cbb639216743721076bc8beb7bb45e796e0e3422872f9f0fcd362e693be7ca40e2123dd1efaf71ebb94d38052458281ad3b69ec8977c8294928400";
-   //     address addr = 0x8e6a1f13a9c6b9443fea4393291308ac4c965b69;
-//
- //       return recover(message, sig) == addr;
-  //  }
 
+    //this is a verification function exposed only to check the verification signature process
+    //todo : for production change this function to private
     function validateSignature(string memory anchorID,string memory newHashLinkSSI,string memory ZKPValue,
-        string memory lastHashLinkSSI, string memory signature, string memory publicKey) public returns (bool)
+        string memory lastHashLinkSSI, bytes memory signature, bytes memory publicKey) public returns (bool)
     {
-        return getAddressFromPublicKey(bytes(publicKey)) == uint256(getAddressFromHashAndSig(anchorID, newHashLinkSSI, ZKPValue, lastHashLinkSSI, signature));
+        return calculateAddress(publicKey) == getAddressFromHashAndSig(anchorID, newHashLinkSSI, ZKPValue, lastHashLinkSSI, signature);
     }
 
-    function getAddressFromPublicKey(bytes memory publicKey) public returns (uint256){
-        return (uint(sha256(publicKey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
+    //this is a verification function exposed only to check the verification signature process
+    //todo : for production change this function to private
+    function calculateAddress(bytes memory pub) public pure returns (address addr) {
+        // address is 65 bytes
+        // lose the first byte 0x04, use only the 64 bytes
+        // sha256 (64 bytes)
+        // get the 20 bytes
+        bytes memory pubk = get64(pub);
+
+        bytes32 hash = keccak256(pubk);
+        assembly {
+            mstore(0, hash)
+            addr := mload(0)
+        }
     }
 
+    //this is a verification function exposed only to check the verification signature process
+    //todo : for production change this function to private
+    function get64(bytes memory pub) public pure returns (bytes memory)
+    {
+        //format 0x04bytes32bytes32
+        bytes32 first32;
+        bytes32 second32;
+        assembly {
+            //intentional 0x04bytes32 -> bytes32. We drop 0x04
+            first32 := mload(add(pub, 33))
+            second32 := mload(add(pub, 65))
+        }
+
+        return abi.encodePacked(first32,second32);
+    }
+
+    //this is a verification function exposed only to check the verification signature process
+    //todo : for production change this function to private
     function getAddressFromHashAndSig(string memory anchorID,string memory newHashLinkSSI,string memory ZKPValue,
-        string memory lastHashLinkSSI, string memory signature) public returns (address)
+        string memory lastHashLinkSSI, bytes memory signature) public returns (address)
     {
         //return the public key derivation
-        return recover(getHashToBeChecked(anchorID,newHashLinkSSI,ZKPValue,lastHashLinkSSI), bytes(signature));
+        return recover(getHashToBeChecked(anchorID,newHashLinkSSI,ZKPValue,lastHashLinkSSI), signature);
     }
 
+    //this is a verification function exposed only to check the verification signature process
+    //todo : for production change this function to private
     function getHashToBeChecked(string memory anchorID,string memory newHashLinkSSI,string memory ZKPValue,
         string memory lastHashLinkSSI) public view returns (bytes32)
     {
         //use abi.encodePacked to not pad the inputs
-
         if (anchorVersions[anchorID].length == 0)
         {
             return sha256(abi.encodePacked(anchorID,newHashLinkSSI,ZKPValue));
         }
             return sha256(abi.encodePacked(anchorID,newHashLinkSSI,ZKPValue,lastHashLinkSSI));
-    }
-
-    function validateHashSignature(string memory anchorID,string memory newHashLinkSSI,string memory ZKPValue,
-        string memory lastHashLinkSSI,string memory signature) private returns (int)
-    {
-        bytes memory hash;
-        if (anchorVersions[anchorID].length == 0)
-        {
-            hash = abi.encode(anchorID,newHashLinkSSI,ZKPValue);
-        }else{
-            hash = abi.encode(anchorID,newHashLinkSSI,ZKPValue,lastHashLinkSSI);
-        }
-        // call some function with the hash and the signature
-        // below is how to extract r,s,v from signature
-        //signature = signature.substr(2); //remove 0x
-        //const r = '0x' + signature.slice(0, 64)
-        //const s = '0x' + signature.slice(64, 128)
-        //const v = '0x' + signature.slice(128, 130)
-        //const v_decimal = web3.toDecimal(v)
-
-        // the output of the function is the public key that we get. If is match, the input is valid, otherwise we emit error and stop.
-
-        //solidity - ecrecover function
-        //ecrecover(bytes32 hash, uint8 v, bytes32 r, bytes32 s) returns
-        //(address): recover the address associated with the public key from
-        //elliptic curve signature or return zero on error
-        //address is a derivation from the publickey
-        // example of derivation publickey -> address (the address is not paybale)
-        //function checkPubKey(bytes pubkey) constant returns (bool){
-        //    return (uint(keccak256(pubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) == uint(msg.sender);
-        //}
-
-        //so we could use:
-        //function checkPubKey(bytes pubkey, bytes addressGotFromSignatureCheck) constant returns (bool){
-        //         return (uint(keccak256(pubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) == uint(addressGotFromSignatureCheck);
-        //        }
-
-        // we get address :
-        // addressGotFromSignatureCheck = ecrecover(hash,v,r,s);
-        return 1;
     }
 
     function validateAnchorContinuity(string memory anchorID, string memory lastHashLinkSSI, string memory newHashLinkSSI) private returns (int)
