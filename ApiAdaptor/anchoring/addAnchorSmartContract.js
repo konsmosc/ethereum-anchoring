@@ -4,7 +4,9 @@ function addAnchor(anchorFactory, account,
                    signature, publicKey,
                    callback) {
 
-
+    console.log(anchorID,keySSIType,controlString,
+        vn, newHashLinkSSI, ZKPValue, lastHashLinkSSI,
+        signature, publicKey);
     anchorFactory.methods.addAnchor(anchorID, keySSIType, controlString,
         vn, newHashLinkSSI, ZKPValue, lastHashLinkSSI,
         signature, publicKey).send({from: account, gas: 1500000}).then((f) => {

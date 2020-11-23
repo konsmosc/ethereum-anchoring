@@ -33,7 +33,7 @@ function createAddAnchorHandler(anchorFactory, account) {
              string publicKey - todo
              */
 
-            const controlSubstring = keySSI[4];
+            const controlSubstring = Buffer.from(decode(keySSI[4])).toString('hex');
             const versionNumber = keySSI[5];
             const keySSIType = keySSI[1];
             const newHashLinkSSI = body.hash.newHashLinkSSI;
