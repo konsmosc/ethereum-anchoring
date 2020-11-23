@@ -155,6 +155,7 @@ describe('Anchor Contract', () => {
         //decode the hash
         const hashDecoded = openDsuCrypto.decode(seedSSI, base58encodedHash).toString('hex');
 
+
         //use crypto sign until is implemented in opendsu for {r,s} sign format
         const sign = require("crypto").createSign("sha256");
         sign.update(hashDecoded);
@@ -162,6 +163,22 @@ describe('Anchor Contract', () => {
 
         console.log('signature from crypto node js module : ',signature);
         console.log('signature from crypto node js module :',signature.toString('hex'));
+
+        //use crypto sign until is implemented in opendsu for {r,s} sign format
+        const sign1 = require("crypto").createSign("sha256");
+        sign1.update(hashDecoded);
+        const signature1 = sign1.sign(privateKeyPem);
+
+        console.log('signature1 from crypto node js module : ',signature1);
+        console.log('signature1 from crypto node js module :',signature1.toString('hex'));
+
+        //use crypto sign until is implemented in opendsu for {r,s} sign format
+        const {subtle} = require("@trust/webcrypto");
+        const sigweb = await subtle.sign({name:'ECDSA'},privateKeyPem,hashDecoded);
+
+
+        console.log('sigweb from crypto node js module : ',sigweb);
+        console.log('sigweb from crypto node js module :',sigweb.toString('hex'));
 
         //sign the hash using ethers library
         const eth = require('ethers');

@@ -8,10 +8,11 @@ RUN yarn global add truffle
 
 # Create app directory
 WORKDIR /usr/node/app
-COPY package*.json ./
-RUN npm install
 COPY . .
+#COPY package*.json ./
+RUN npm install
+#COPY . .
 
-CMD [ "sh","-c", "truffle migrate && sleep 2000" ]
+CMD [ "sh","-c", "truffle migrate && node index.js" ]
 #CMD [ "truffle", "migrate" ]
 

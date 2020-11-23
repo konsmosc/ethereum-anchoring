@@ -13,3 +13,31 @@ spec:
     - name: anchorsmart-container
       image: mabdockerid/anchor_smart:latest
       imagePullPolicy: Always
+      env:
+      # API endpoint to obtain abi and smart contract address by reading the value of 'contractAddress' or 'abi' from the returned json
+      # GET /contractAddress
+      # GET /abi
+        - name: PORT
+          value: "5000"
+        - name: ACCOUNT
+          value: "0x66d66805E29EaB59901f8B7c4CAE0E38aF31cb0e"
+        - name: RPC_HOST
+          value: "172.20.192.124"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: anchorsmart-service
+  labels:
+    name: anchorsmart-service
+
+spec:
+  selector:
+    app: anchorsmart
+
+  ports:
+    - port: 5000
+      targetPort: 5000
+
+  type: ClusterIP

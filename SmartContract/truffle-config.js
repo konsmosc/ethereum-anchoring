@@ -1,7 +1,5 @@
+const truffleConfig = {
 
-
-module.exports = {
-  
 
   networks: {
     internal: {
@@ -10,11 +8,11 @@ module.exports = {
       network_id: "*",
       gas: 4712388,
       gasPrice: 300000,
-      from: "0xA30187C06F27AE9AB5334d3546ed23269684263C",
+      from: "0x85Eb50fd4f27A5c9E4430a6840722cDa9BB2b358",
 
     },
     development: {
-      host: "172.20.119.173",
+      host: "172.20.2.141",
       port: 8545,
       network_id: "*",
       gas: 4712388,
@@ -23,7 +21,7 @@ module.exports = {
       password: "lst7upm",
       type: "quorum"
     }
-    
+
   },
 
   // Set default mocha options here, use special reporters etc.
@@ -46,3 +44,30 @@ module.exports = {
     },
   },
 };
+
+if (typeof process.env.DEV_MODE !== "undefined")
+{
+  console.log('Using .env file for environment variables');
+  require('dotenv').config();
+}
+else {
+  console.log('Using environment variables defined by context. Eg. existing context or context set in yaml file.');
+}
+
+function getTruffleConfiguration() {
+  if (typeof process.env.ACCOUNT !== "undefined")
+  {
+    console.log('Using env ACCOUNT : ', process.env.ACCOUNT);
+    truffleConfig.networks.internal.from =  process.env.ACCOUNT;
+    truffleConfig.networks.development.from =  process.env.ACCOUNT;
+  }
+  if (typeof process.env.RPC_HOST !== "undefined")
+  {
+    console.log('Using env RPC_HOST : ', process.env.RPC_HOST);
+    truffleConfig.networks.internal.host =  process.env.RPC_HOST;
+    truffleConfig.networks.development.host =  process.env.RPC_HOST;
+  }
+  return truffleConfig;
+}
+
+module.exports = getTruffleConfiguration();
