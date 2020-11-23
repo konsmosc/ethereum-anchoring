@@ -1,6 +1,7 @@
 const express = require('express');
 
 
+
 function requestBodyJSONMiddleware(request, response, next) {
     /**
      * Prepare headers for response
@@ -63,17 +64,24 @@ module.exports = function () {
 
     const port = process.env.PORT === undefined ? 3000 : process.env.PORT;
     const config = require("./utils/config");
-    const scConfig = new config();
-    console.log("Configuration file used at runtime : ", scConfig);
-    this.webServer = express();
+    new config((err, result) => {
+        if (err)
+        {
+            return;
+        }
+        const scConfig = result;
+        console.log("Configuration file used at runtime : ", scConfig);
+        this.webServer = express();
 
-    this.webServer.listen(port);
+        this.webServer.listen(port);
 
-    configureHeaders(this.webServer);
+        configureHeaders(this.webServer);
 
-    configureAddAnchorEntryPoints(this.webServer, scConfig);
-    configureGetAnchorVersionsEntryPoints(this.webServer, scConfig);
+        configureAddAnchorEntryPoints(this.webServer, scConfig);
+        configureGetAnchorVersionsEntryPoints(this.webServer, scConfig);
 
-    console.log('Server started. Listening on ', port);
-    return this;
+        console.log('Server started. Listening on ', port);
+        return this;
+    });
+
 };
