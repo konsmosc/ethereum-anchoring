@@ -7,7 +7,7 @@ function createAddAnchorHandler(anchorFactory, account) {
         const anchorID = request.params.keySSI;
 
         const body = request.body;
-
+        console.log(body);
         try {
             if (body.hash.newHashLinkSSI === undefined || body.hash.lastHashLinkSSI === undefined) {
                 console.log('Invalid body', body);
@@ -38,12 +38,25 @@ function createAddAnchorHandler(anchorFactory, account) {
             const keySSIType = keySSI[1];
             const newHashLinkSSI = body.hash.newHashLinkSSI;
             const lastHashLinkSSI = body.hash.lastHashLinkSSI == null ? newHashLinkSSI : body.hash.lastHashLinkSSI;
+
+            //handle signature
+
+            const openDsuUtils = require('../utils/opendsuutils');
+            const derSignature = openDsuUtils.decodeBase58(body.digitalProof.signature);
+            const signature64 = openDsuUtils.convertDerSignatureToASN1(Buffer.from(derSignature),'hex');
+            const signature65 = signature64+"27";
+            console.log ('signature : ', signature65);
+            //handle public key
+            const publicKey = openDsuUtils.decodeBase58(body.digitalProof.publicKey);
+            const prefixedPublicKey = '0x'+publicKey.toString('hex');
+            console.log('prefixed pub key : ', prefixedPublicKey);
+
             //  console.log(keySSI);
             //  console.log({controlSubstring,versionNumber,keySSIType});
             require("../anchoring/addAnchorSmartContract")(anchorFactory.contract, account,
                 anchorID, keySSIType, '0x'+controlSubstring,
                 versionNumber, newHashLinkSSI, "ZKPValue", lastHashLinkSSI,
-                "0x00AA", "0x00AA",
+                signature65, prefixedPublicKey,
                 (err, result) => {
 
                     if (err) {
