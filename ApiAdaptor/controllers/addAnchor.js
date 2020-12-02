@@ -27,10 +27,10 @@ function createAddAnchorHandler(anchorFactory, account) {
              string controlString - keySSI[4]
              string vn - keySSI[5]
              string newHashLinkSSI - body
-             string ZKPValue - todo
+             string ZKPValue - body.zkp
              string lastHashLinkSSI - body
-             string signature - todo
-             string publicKey - todo
+             string signature - body.digitalProof.signature
+             string publicKey - body.digitalProof.publicKey
              */
 
             const controlSubstring = Buffer.from(decode(keySSI[4])).toString('hex');
@@ -42,26 +42,37 @@ function createAddAnchorHandler(anchorFactory, account) {
             //handle signature
 
             const openDsuUtils = require('../utils/opendsuutils');
+            console.log('signature : ', body.digitalProof.signature);
             const derSignature = openDsuUtils.decodeBase58(body.digitalProof.signature);
-            const signature64 = openDsuUtils.convertDerSignatureToASN1(Buffer.from(derSignature),'hex');
+            const signature64 = openDsuUtils.convertDerSignatureToASN1(Buffer.from(derSignature,'hex'));
 
 
             //handle public key
+            console.log('public key : ',body.digitalProof.publicKey);
             const publicKey = openDsuUtils.decodeBase58(body.digitalProof.publicKey);
             const prefixedPublicKey = '0x'+publicKey.toString('hex');
             console.log('prefixed pub key : ', prefixedPublicKey);
-
-            let valueToHash = anchorID+newHashLinkSSI
+            const zkpValue = body.zkp;
+            const valueToHash = anchorID+newHashLinkSSI
+                + zkpValue
                 + (newHashLinkSSI === lastHashLinkSSI || lastHashLinkSSI === '' ? '' : lastHashLinkSSI)
-                + "ZKPValue";
-            const foundv = require('../utils/eth').getVSignature(signature64,publicKey,valueToHash);
-            const signature65 = signature64+foundv;
-            console.log ('signature : ', signature65);
+            console.log('value to hash : ',valueToHash);
+            const signature65 = require('../utils/eth').getVSignature(signature64,publicKey,valueToHash);
+
+            console.log ('signature send to smart contract : ', signature65);
+
+            console.log('------------------------------------------------------------');
+            console.log('control string :', controlSubstring);
+            const h1 = require('crypto').createHash('sha256').update(publicKey).digest().toString('hex');
+            const h2 = require('crypto').createHash('sha256').update(Buffer.from(publicKey,'hex')).digest().toString('hex');
+            console.log(h1);
+            console.log(h2);
+            console.log('------------------------------------------------------------');
             //  console.log(keySSI);
             //  console.log({controlSubstring,versionNumber,keySSIType});
             require("../anchoring/addAnchorSmartContract")(anchorFactory.contract, account,
                 anchorID, keySSIType, '0x'+controlSubstring,
-                versionNumber, newHashLinkSSI, "ZKPValue", lastHashLinkSSI,
+                versionNumber, newHashLinkSSI, zkpValue, lastHashLinkSSI,
                 signature65, prefixedPublicKey,
                 (err, result) => {
 

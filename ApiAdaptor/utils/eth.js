@@ -12,20 +12,20 @@ function getVSignature(signature, publicKey, valueToHash){
     //compare them for v
     if (ethAccount === recoveredEthAddress1c)
     {
-        return '1c';
+        return signature1c;
     }
 
-    const signature1d = signature+'1d';
-    const recoveredEthAddress1d = eth.utils.recoverAddress(hashedValue,signature1d);
+    const signature1b = signature+'1b';
+    const recoveredEthAddress1b = eth.utils.recoverAddress(hashedValue,signature1b);
     //compare them for v
-    if (ethAccount === recoveredEthAddress1d)
+    if (ethAccount === recoveredEthAddress1b)
     {
-        return '1d';
+        return signature1b;
     }
     console.log('signature 1c', signature1c);
-    console.log('signature 1d', signature1d);
+    console.log('signature 1b', signature1b);
     console.log('received signature ', signature);
-    console.log('Expected eth account ', ethAccount,' but got ',recoveredEthAddress1c,' and ',recoveredEthAddress1d);
+    console.log('Expected eth account ', ethAccount,' but got ',recoveredEthAddress1c,' and ',recoveredEthAddress1b);
     console.log('Unable to determine v !');
     throw ('Unable to determine v !');
 }

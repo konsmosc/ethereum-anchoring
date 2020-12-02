@@ -4,7 +4,7 @@ function addAnchor(anchorFactory, account,
                    signature, publicKey,
                    callback) {
 
-    console.log(anchorID,keySSIType,controlString,
+    console.log('Input for addAnchor smart contract : ',anchorID,keySSIType,controlString,
         vn, newHashLinkSSI, ZKPValue, lastHashLinkSSI,
         signature, publicKey);
     anchorFactory.methods.addAnchor(anchorID, keySSIType, controlString,
