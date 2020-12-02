@@ -12,7 +12,8 @@
     "express": "^4.17.1",
     "dotenv": "^8.2.0",
     "base58-universal": "^1.0.0",
-    "ethereum-public-key-to-address": "^0.0.5"
+    "ethereum-public-key-to-address": "^0.0.5",
+    "ethers": "^5.0.23"
   },
   "devDependencies": {},
   "scripts": {

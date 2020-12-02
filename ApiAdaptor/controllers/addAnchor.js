@@ -44,13 +44,19 @@ function createAddAnchorHandler(anchorFactory, account) {
             const openDsuUtils = require('../utils/opendsuutils');
             const derSignature = openDsuUtils.decodeBase58(body.digitalProof.signature);
             const signature64 = openDsuUtils.convertDerSignatureToASN1(Buffer.from(derSignature),'hex');
-            const signature65 = signature64+"27";
-            console.log ('signature : ', signature65);
+
+
             //handle public key
             const publicKey = openDsuUtils.decodeBase58(body.digitalProof.publicKey);
             const prefixedPublicKey = '0x'+publicKey.toString('hex');
             console.log('prefixed pub key : ', prefixedPublicKey);
 
+            let valueToHash = anchorID+newHashLinkSSI
+                + (newHashLinkSSI === lastHashLinkSSI || lastHashLinkSSI === '' ? '' : lastHashLinkSSI)
+                + "ZKPValue";
+            const foundv = require('../utils/eth').getVSignature(signature64,publicKey,valueToHash);
+            const signature65 = signature64+foundv;
+            console.log ('signature : ', signature65);
             //  console.log(keySSI);
             //  console.log({controlSubstring,versionNumber,keySSIType});
             require("../anchoring/addAnchorSmartContract")(anchorFactory.contract, account,
