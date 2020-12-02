@@ -5,8 +5,8 @@ const web3 = new Web3(ganache.provider());
 
 //opendsu
 require("../../../privatesky/psknode/bundles/openDSU");
-const or = openDSURequire('overwrite-require');
-or.enableForEnvironment(or.constants.NODEJS_ENVIRONMENT_TYPE);
+openDSURequire('overwrite-require');
+
 //end open dsu
 
 const fs = require('fs');
@@ -222,6 +222,35 @@ describe('Anchor Contract', () => {
         assert.strictEqual(result, true);
 
 
+    });
+    it ('fast test', async () => {
+        const signature = "0x28a2db35a02f1825674cbac0ec013149c8221bacd48bc84dc0b912e77e94997786c5a76b095fcc5072e1e11bddb7b1c0d22619f8c0cc0bb28e9c9c43e09fcf191b";
+        const valtohash = "3JstiXPDGd8K9TH1QbEz1x5Gj7CkQoNsMy4s8ZomirJMJDewo8PYRWVEHJXhY6UznwkDwRhTJJxDUFmg6WS3XT2XXLEXhruFmBh7kmca4v7ujNQLKyWJ8QNQ44P1wSsa3g2jRxf7wHMKnCADtXkaDxybigkuUCicpTgkqCNkE2p1nw";
+        const pubKey = "R2RhcroaqARWBw8Pbe3rj31bTmeaVhSX9zA3cwrwZEtns3HpErTf41QF5NEACs5ZDhWHD3v7hoYireMTtMq8ht9G"; //encoded
+        const anchorid = '3JstiXPDGd8K9TH1QbEz1x5Gj7CkQoNsMy4s8ZomirJMJDewo8PYRWVEHJXhY6UznwkDwRhTJJxDUFmg6WS3XT2X';
+        const newhashlink = 'XLEXhruFmBh7kmca4v7ujNQLKyWJ8QNQ44P1wSsa3g2jRxf7wHMKnCADtXkaDxybigkuUCicpTgkqCNkE2p1nw';
+        //const or =
+
+        //or.enableForEnvironment(or.constants.NODEJS_ENVIRONMENT_TYPE);
+        //end open dsu
+
+        const openDsuCrypto = openDSURequire("opendsu").loadApi("crypto");
+        const publicKeyRaw = openDsuCrypto.decodeBase58(pubKey);
+
+
+
+        const ethereumAddressFromEthSign = await anchorContract.methods.getAddressFromHashAndSig(anchorid,newhashlink,"","",
+            signature).call();
+        console.log('fast test || ethereumAddress using sign from eth : ',ethereumAddressFromEthSign);
+        const solidityEthereumAdressFromPublicKey = await anchorContract.methods.calculateAddress(publicKeyRaw).call();
+        console.log('fast test || solidityEthereumAdressFromPublicKey : ',solidityEthereumAdressFromPublicKey);
+
+        const signatureValidated = await anchorContract.methods.validateSignature(anchorid,newhashlink,"","",
+            signature,publicKeyRaw).call();
+
+
+        assert.strictEqual(ethereumAddressFromEthSign, solidityEthereumAdressFromPublicKey);
+        assert.strictEqual(signatureValidated, true);
     });
     it ('TODO : check signature from opendsu is accepted by smart contract', async ( )=> {
 

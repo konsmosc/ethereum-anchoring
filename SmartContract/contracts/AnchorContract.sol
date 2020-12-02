@@ -46,41 +46,41 @@ contract AnchorContract {
             //todo : add error management
             //todo : add new mapping between anchorID and controlString
             //todo : use controlString if is already defined for anchorID and ignore the parameter
-            //int validateAnchorContinuityResult = validateAnchorContinuity(anchorID, lastHashLinkSSI, newHashLinkSSI);
-           // if (validateAnchorContinuityResult == 0)
-           // {
+            int validateAnchorContinuityResult = validateAnchorContinuity(anchorID, lastHashLinkSSI, newHashLinkSSI);
+            if (validateAnchorContinuityResult == 0)
+            {
                 //hash link are out of sync
-           //     emit InvokeStatus(statusHashLinkOutOfSync);
-           //     return;
-           // }
+                emit InvokeStatus(statusHashLinkOutOfSync);
+                return;
+            }
 
-          //  if (validateAnchorContinuityResult == -1)
-          //  {
+            if (validateAnchorContinuityResult == -1)
+            {
                 //anchor is new and we must check controlString
-          //      if (isEmptyBytes32(controlString))
-          //      {
-          //          emit InvokeStatus(statusControlStringEmptyOnNewAnchor);
-          //          return;
-          //      }
+                if (isEmptyBytes32(controlString))
+                {
+                    emit InvokeStatus(statusControlStringEmptyOnNewAnchor);
+                    return;
+                }
                 // add controlString to the mapping
-           //     anchorControlStrings[anchorID] = controlString;
-           // }
+                anchorControlStrings[anchorID] = controlString;
+            }
 
             //validate hash of the publicKey
             //todo : enable
             //if (validatePublicKeyHash(publicKey,anchorID) == -1)
-            //{
-                //emit InvokeStatus(statusHashOfPublicKeyDoesntMatchControlString);
-                //return;
-            //}
+          //  {
+          //      emit InvokeStatus(statusHashOfPublicKeyDoesntMatchControlString);
+          //      return;
+          //  }
 
             //validate signature
             //todo : enable
-            //if (!validateSignature(anchorID, newHashLinkSSI,ZKPValue,lastHashLinkSSI, signature,publicKey))
-            //{
-                //emit InvokeStatus(statusSignatureCheckFailed);
-                //return;
-            //}
+            if (!validateSignature(anchorID, newHashLinkSSI,ZKPValue,lastHashLinkSSI, signature,publicKey))
+            {
+                emit InvokeStatus(statusSignatureCheckFailed);
+                return;
+            }
 
             //create new anchor value
             AnchorValue memory anchorValue = buildAnchorValue(newHashLinkSSI,lastHashLinkSSI,ZKPValue);
