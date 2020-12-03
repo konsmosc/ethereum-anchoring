@@ -61,13 +61,7 @@ function createAddAnchorHandler(anchorFactory, account) {
 
             console.log ('signature send to smart contract : ', signature65);
 
-            console.log('------------------------------------------------------------');
-            console.log('control string :', controlSubstring);
-            const h1 = require('crypto').createHash('sha256').update(publicKey).digest().toString('hex');
-            const h2 = require('crypto').createHash('sha256').update(Buffer.from(publicKey,'hex')).digest().toString('hex');
-            console.log(h1);
-            console.log(h2);
-            console.log('------------------------------------------------------------');
+
             //  console.log(keySSI);
             //  console.log({controlSubstring,versionNumber,keySSIType});
             require("../anchoring/addAnchorSmartContract")(anchorFactory.contract, account,

@@ -68,11 +68,11 @@ contract AnchorContract {
 
             //validate hash of the publicKey
             //todo : enable
-            //if (validatePublicKeyHash(publicKey,anchorID) == -1)
-          //  {
-          //      emit InvokeStatus(statusHashOfPublicKeyDoesntMatchControlString);
-          //      return;
-          //  }
+            if (validatePublicKeyHash(publicKey,anchorID) == -1)
+            {
+                emit InvokeStatus(statusHashOfPublicKeyDoesntMatchControlString);
+                return;
+            }
 
             //validate signature
             //todo : enable
