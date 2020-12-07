@@ -258,7 +258,27 @@ describe('Anchor Contract', () => {
 
     });
 
+    it ('check read only anchor', async () => {
+        // read only anchors ignore every control field
+        //can add only one
+        const result = await anchorContract.methods.addAnchor("anchorID", "keySSIType", "0x",
+            "vn", "newHashLinkSSI", "ZKPValue", "lastHashLinkSSI",
+            "0x", "0x").send({
+            from: accounts[0],
+            gas: 3000000
+        });
 
+        assert.equal(result.events.InvokeStatus.returnValues.statusCode, 200);
+
+        const result2 = await anchorContract.methods.addAnchor("anchorID", "keySSIType", "0x",
+            "vn", "newHashLinkSSI", "ZKPValue", "lastHashLinkSSI",
+            "0x", "0x").send({
+            from: accounts[0],
+            gas: 3000000
+        });
+
+        assert.equal(result2.events.InvokeStatus.returnValues.statusCode, 101);
+    })
 });
 
 

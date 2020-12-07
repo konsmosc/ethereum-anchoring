@@ -6,7 +6,7 @@ contract AnchorContract {
     // error codes
     uint constant statusOK = 200;
     uint constant statusHashLinkOutOfSync = 100;
-    uint constant statusControlStringEmptyOnNewAnchor = 101;
+    uint constant statusCannotUpdateReadOnlyAnchor = 101;
     uint constant statusHashOfPublicKeyDoesntMatchControlString = 102;
     uint constant statusSignatureCheckFailed = 103;
 
@@ -30,7 +30,8 @@ contract AnchorContract {
     //mapping between anchorID and controlString.
     mapping (string => bytes32) anchorControlStrings;
 
-
+    //mapping for read only anchors
+    mapping (string => uint) readOnlyAnchorVersions;
 
     constructor() public {
 
@@ -42,10 +43,15 @@ contract AnchorContract {
     function addAnchor(string memory anchorID, string memory keySSIType, bytes32 controlString,
         string memory vn, string memory newHashLinkSSI, string memory ZKPValue, string memory lastHashLinkSSI,
         bytes memory signature, bytes memory publicKey) public {
-            //todo : implementa validation process
-            //todo : add error management
-            //todo : add new mapping between anchorID and controlString
-            //todo : use controlString if is already defined for anchorID and ignore the parameter
+
+            //check if thew anchorID can accept updates
+            if (isAnchorReadOnly(anchorID))
+            {
+                //anchor is readonly, reject updates
+                emit InvokeStatus(statusCannotUpdateReadOnlyAnchor);
+                return;
+            }
+
             int validateAnchorContinuityResult = validateAnchorContinuity(anchorID, lastHashLinkSSI, newHashLinkSSI);
             if (validateAnchorContinuityResult == 0)
             {
@@ -59,7 +65,11 @@ contract AnchorContract {
                 //anchor is new and we must check controlString
                 if (isEmptyBytes32(controlString))
                 {
-                    emit InvokeStatus(statusControlStringEmptyOnNewAnchor);
+                    //allow only one record of this anchorID
+                    //this anchorID will not accept updates in the future
+                    createReadOnlyNewAnchorValueOnAddAnchor(anchorID, newHashLinkSSI,ZKPValue,lastHashLinkSSI);
+                    //all done, invoke ok status
+                    emit InvokeStatus(statusOK);
                     return;
                 }
                 // add controlString to the mapping
@@ -67,7 +77,6 @@ contract AnchorContract {
             }
 
             //validate hash of the publicKey
-            //todo : enable
             if (validatePublicKeyHash(publicKey,anchorID) == -1)
             {
                 emit InvokeStatus(statusHashOfPublicKeyDoesntMatchControlString);
@@ -75,34 +84,51 @@ contract AnchorContract {
             }
 
             //validate signature
-            //todo : enable
             if (!validateSignature(anchorID, newHashLinkSSI,ZKPValue,lastHashLinkSSI, signature,publicKey))
             {
                 emit InvokeStatus(statusSignatureCheckFailed);
                 return;
             }
 
-            //create new anchor value
-            AnchorValue memory anchorValue = buildAnchorValue(newHashLinkSSI,lastHashLinkSSI,ZKPValue);
-            anchorStorage.push(anchorValue);
-            uint versionIndex = anchorStorage.length - 1;
-            //update number of versions available for that anchor
-            anchorVersions[anchorID].push(versionIndex);
-
+            createNewAnchorValueOnAddAnchor(anchorID, newHashLinkSSI,ZKPValue,lastHashLinkSSI);
             //all done, invoke ok status
             emit InvokeStatus(statusOK);
     }
 
+    function createNewAnchorValueOnAddAnchor(string memory anchorID, string memory newHashLinkSSI,
+        string memory ZKPValue, string memory lastHashLinkSSI) private
+    {
+        //create new anchor value
+        AnchorValue memory anchorValue = buildAnchorValue(newHashLinkSSI,lastHashLinkSSI,ZKPValue);
+        anchorStorage.push(anchorValue);
+        uint versionIndex = anchorStorage.length - 1;
+        //update number of versions available for that anchor
+        anchorVersions[anchorID].push(versionIndex);
+    }
 
+    function createReadOnlyNewAnchorValueOnAddAnchor(string memory anchorID, string memory newHashLinkSSI,
+        string memory ZKPValue, string memory lastHashLinkSSI) private
+    {
+        //for readonly anchor store the values in the same place as normal anchors
+        //getVersions will provide information the same way, regardless of the anchorID type
 
+        //create new anchor value
+        AnchorValue memory anchorValue = buildAnchorValue(newHashLinkSSI,lastHashLinkSSI,ZKPValue);
+        anchorStorage.push(anchorValue);
+        uint versionIndex = anchorStorage.length - 1;
+        //update number of versions available for that anchor
+        anchorVersions[anchorID].push(versionIndex);
+        // mark the anchorID as read only
+        readOnlyAnchorVersions[anchorID] = versionIndex;
+    }
 
-    function validatePublicKeyAndControlString(bytes memory publicKey,bytes32 controlString) public returns (bool)
+    function validatePublicKeyAndControlString(bytes memory publicKey,bytes32 controlString) private pure returns (bool)
     {
         return (sha256(publicKey) == controlString);
     }
 
 
-    function validatePublicKeyHash(bytes memory publicKey, string memory anchorID) public returns (int)
+    function validatePublicKeyHash(bytes memory publicKey, string memory anchorID) private view returns (int)
     {
         bytes32 controlString =  anchorControlStrings[anchorID];
         if (validatePublicKeyAndControlString(publicKey,controlString))
@@ -151,17 +177,14 @@ contract AnchorContract {
     }
 
 
-    //this is a verification function exposed only to check the verification signature process
-    //todo : for production change this function to private
     function validateSignature(string memory anchorID,string memory newHashLinkSSI,string memory ZKPValue,
-        string memory lastHashLinkSSI, bytes memory signature, bytes memory publicKey) public returns (bool)
+        string memory lastHashLinkSSI, bytes memory signature, bytes memory publicKey) private view returns (bool)
     {
         return calculateAddress(publicKey) == getAddressFromHashAndSig(anchorID, newHashLinkSSI, ZKPValue, lastHashLinkSSI, signature);
     }
 
-    //this is a verification function exposed only to check the verification signature process
-    //todo : for production change this function to private
-    function calculateAddress(bytes memory pub) public pure returns (address addr) {
+    // calculate the ethereum like address starting from the public key
+    function calculateAddress(bytes memory pub) private pure returns (address addr) {
         // address is 65 bytes
         // lose the first byte 0x04, use only the 64 bytes
         // sha256 (64 bytes)
@@ -175,9 +198,7 @@ contract AnchorContract {
         }
     }
 
-    //this is a verification function exposed only to check the verification signature process
-    //todo : for production change this function to private
-    function get64(bytes memory pub) public pure returns (bytes memory)
+    function get64(bytes memory pub) private pure returns (bytes memory)
     {
         //format 0x04bytes32bytes32
         bytes32 first32;
@@ -191,19 +212,15 @@ contract AnchorContract {
         return abi.encodePacked(first32,second32);
     }
 
-    //this is a verification function exposed only to check the verification signature process
-    //todo : for production change this function to private
     function getAddressFromHashAndSig(string memory anchorID,string memory newHashLinkSSI,string memory ZKPValue,
-        string memory lastHashLinkSSI, bytes memory signature) public returns (address)
+        string memory lastHashLinkSSI, bytes memory signature) private view returns (address)
     {
         //return the public key derivation
         return recover(getHashToBeChecked(anchorID,newHashLinkSSI,ZKPValue,lastHashLinkSSI), signature);
     }
 
-    //this is a verification function exposed only to check the verification signature process
-    //todo : for production change this function to private
     function getHashToBeChecked(string memory anchorID,string memory newHashLinkSSI,string memory ZKPValue,
-        string memory lastHashLinkSSI) public view returns (bytes32)
+        string memory lastHashLinkSSI) private view returns (bytes32)
     {
         //use abi.encodePacked to not pad the inputs
         if (anchorVersions[anchorID].length == 0)
@@ -213,7 +230,22 @@ contract AnchorContract {
             return sha256(abi.encodePacked(anchorID,newHashLinkSSI,ZKPValue,lastHashLinkSSI));
     }
 
-    function validateAnchorContinuity(string memory anchorID, string memory lastHashLinkSSI, string memory newHashLinkSSI) private returns (int)
+    function isAnchorReadOnly(string memory anchorID) private view returns(bool)
+    {
+        if (anchorVersions[anchorID].length != 0)
+        {
+            if (anchorVersions[anchorID][0] == readOnlyAnchorVersions[anchorID])
+            {
+                //anchor is read only
+                return true;
+            }
+        }
+
+        //anchor is not read only
+        return false;
+    }
+
+    function validateAnchorContinuity(string memory anchorID, string memory lastHashLinkSSI, string memory newHashLinkSSI) private view returns (int)
     {
         if (anchorVersions[anchorID].length == 0)
         {
@@ -272,25 +304,8 @@ contract AnchorContract {
         return data[0] == 0;
     }
 
-    function isStringEmpty(string memory data) private pure returns (bool)
-    {
-        bytes memory bdata = bytes(data);
-        if (bdata.length == 0)
-        {
-            return true;
-        }
-        return false;
-    }
 
 
-    function stringToBytes32(string memory source) private pure returns (bytes32 result) {
-        bytes memory tempEmptyStringTest = bytes(source);
-        if (tempEmptyStringTest.length == 0) {
-            return 0x0;
-        }
 
-        assembly {
-            result := mload(add(source, 32))
-        }
-    }
+
 }

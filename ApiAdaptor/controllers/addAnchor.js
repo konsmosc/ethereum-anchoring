@@ -33,39 +33,52 @@ function createAddAnchorHandler(anchorFactory, account) {
              string publicKey - body.digitalProof.publicKey
              */
 
-            const controlSubstring = Buffer.from(decode(keySSI[4])).toString('hex');
+            let controlSubstring = Buffer.from(decode(keySSI[4])).toString('hex');
             const versionNumber = keySSI[5];
             const keySSIType = keySSI[1];
             const newHashLinkSSI = body.hash.newHashLinkSSI;
             const lastHashLinkSSI = body.hash.lastHashLinkSSI == null ? newHashLinkSSI : body.hash.lastHashLinkSSI;
-
-            //handle signature
-
-            const openDsuUtils = require('../utils/opendsuutils');
-            console.log('signature : ', body.digitalProof.signature);
-            const derSignature = openDsuUtils.decodeBase58(body.digitalProof.signature);
-            const signature64 = openDsuUtils.convertDerSignatureToASN1(Buffer.from(derSignature,'hex'));
-
-
-            //handle public key
-            console.log('public key : ',body.digitalProof.publicKey);
-            const publicKey = openDsuUtils.decodeBase58(body.digitalProof.publicKey);
-            const prefixedPublicKey = '0x'+publicKey.toString('hex');
-            console.log('prefixed pub key : ', prefixedPublicKey);
             const zkpValue = body.zkp;
-            const valueToHash = anchorID+newHashLinkSSI
-                + zkpValue
-                + (newHashLinkSSI === lastHashLinkSSI || lastHashLinkSSI === '' ? '' : lastHashLinkSSI)
-            console.log('value to hash : ',valueToHash);
-            const signature65 = require('../utils/eth').getVSignature(signature64,publicKey,valueToHash);
 
-            console.log ('signature send to smart contract : ', signature65);
+            let signature65;
+            let prefixedPublicKey;
+            if (controlSubstring === "")
+            {
+               signature65 = "0x00";
+               prefixedPublicKey = "0x00";
+               controlSubstring = "0x00";
+            }
+            else {
+                controlSubstring = '0x'+controlSubstring;
+                //handle signature
+
+                const openDsuUtils = require('../utils/opendsuutils');
+                console.log('signature : ', body.digitalProof.signature);
+                const derSignature = openDsuUtils.decodeBase58(body.digitalProof.signature);
+                const signature64 = openDsuUtils.convertDerSignatureToASN1(Buffer.from(derSignature,'hex'));
+
+
+                //handle public key
+                console.log('public key : ',body.digitalProof.publicKey);
+                const publicKey = openDsuUtils.decodeBase58(body.digitalProof.publicKey);
+                prefixedPublicKey = '0x'+publicKey.toString('hex');
+                console.log('prefixed pub key : ', prefixedPublicKey);
+
+                const valueToHash = anchorID+newHashLinkSSI
+                    + zkpValue
+                    + (newHashLinkSSI === lastHashLinkSSI || lastHashLinkSSI === '' ? '' : lastHashLinkSSI)
+                console.log('value to hash : ',valueToHash);
+                signature65 = require('../utils/eth').getVSignature(signature64,publicKey,valueToHash);
+
+                console.log ('signature send to smart contract : ', signature65);
+            }
+
 
 
             //  console.log(keySSI);
             //  console.log({controlSubstring,versionNumber,keySSIType});
             require("../anchoring/addAnchorSmartContract")(anchorFactory.contract, account,
-                anchorID, keySSIType, '0x'+controlSubstring,
+                anchorID, keySSIType, controlSubstring,
                 versionNumber, newHashLinkSSI, zkpValue, lastHashLinkSSI,
                 signature65, prefixedPublicKey,
                 (err, result) => {
