@@ -5,6 +5,7 @@ contract AnchorContract {
 
     // error codes
     uint constant statusOK = 200;
+    uint constant statusAddedConstSSIOK = 201;
     uint constant statusHashLinkOutOfSync = 100;
     uint constant statusCannotUpdateReadOnlyAnchor = 101;
     uint constant statusHashOfPublicKeyDoesntMatchControlString = 102;
@@ -31,7 +32,7 @@ contract AnchorContract {
     mapping (string => bytes32) anchorControlStrings;
 
     //mapping for read only anchors
-    mapping (string => uint) readOnlyAnchorVersions;
+    mapping (string => bool) readOnlyAnchorVersions;
 
     constructor() public {
 
@@ -69,7 +70,7 @@ contract AnchorContract {
                     //this anchorID will not accept updates in the future
                     createReadOnlyNewAnchorValueOnAddAnchor(anchorID, newHashLinkSSI,ZKPValue,lastHashLinkSSI);
                     //all done, invoke ok status
-                    emit InvokeStatus(statusOK);
+                    emit InvokeStatus(statusAddedConstSSIOK);
                     return;
                 }
                 // add controlString to the mapping
@@ -104,6 +105,7 @@ contract AnchorContract {
         uint versionIndex = anchorStorage.length - 1;
         //update number of versions available for that anchor
         anchorVersions[anchorID].push(versionIndex);
+
     }
 
     function createReadOnlyNewAnchorValueOnAddAnchor(string memory anchorID, string memory newHashLinkSSI,
@@ -119,7 +121,7 @@ contract AnchorContract {
         //update number of versions available for that anchor
         anchorVersions[anchorID].push(versionIndex);
         // mark the anchorID as read only
-        readOnlyAnchorVersions[anchorID] = versionIndex;
+        readOnlyAnchorVersions[anchorID] = true;
     }
 
     function validatePublicKeyAndControlString(bytes memory publicKey,bytes32 controlString) private pure returns (bool)
@@ -232,13 +234,10 @@ contract AnchorContract {
 
     function isAnchorReadOnly(string memory anchorID) private view returns(bool)
     {
-        if (anchorVersions[anchorID].length != 0)
+        if (readOnlyAnchorVersions[anchorID])
         {
-            if (anchorVersions[anchorID][0] == readOnlyAnchorVersions[anchorID])
-            {
                 //anchor is read only
                 return true;
-            }
         }
 
         //anchor is not read only

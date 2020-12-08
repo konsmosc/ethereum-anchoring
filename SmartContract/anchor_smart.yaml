@@ -22,7 +22,7 @@ spec:
         - name: ACCOUNT
           value: "0x66d66805E29EaB59901f8B7c4CAE0E38aF31cb0e"
         - name: RPC_HOST
-          value: "172.20.192.124"
+          value: "172.20.215.208"
 
 ---
 apiVersion: v1

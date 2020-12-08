@@ -59,206 +59,52 @@ describe('Anchor Contract', () => {
         assert.ok(anchorContract.options.address);
     });
 
-    it('can add anchor and get it\'s version back', async () => {
+    it ('can add anchor and get it\'s version back', async () => {
+        const seedSSI = openDSURequire("opendsu").loadApi("keyssi").buildSeedSSI('default', 'teststring', 'control', 'v0', 'hint');
+        const publicKeyRaw = seedSSI.getPublicKey("raw");
+        const anchorID = seedSSI.getAnchorId();
+        const newHashLinkSSI = "newHashLinkSSI";
+        const lastHashLinkSSI = "newHashLinkSSI";
+
+        const openDsuUtils = require('../../ApiAdaptor/utils/opendsuutils');
+        const keySSI = Buffer.from(openDsuUtils.decodeBase58(anchorID)).toString().split(':');
+        let controlSubstring = Buffer.from(openDsuUtils.decodeBase58(keySSI[4])).toString('hex');
+        const versionNumber = keySSI[5];
+        const keySSIType = keySSI[1];
+        const zkpValue = "zkp";
+
+        const openDsuCrypto = openDSURequire("opendsu").loadApi("crypto");
+
+        //prepare for smartcontract
+        controlSubstring = '0x'+controlSubstring;
+        const publicKeyEncoded = openDsuCrypto.encodeBase58(publicKeyRaw);
+        const prefixedPublicKey = require("../../ApiAdaptor/controllers/addAnchor").getPublicKeyForSmartContract(publicKeyEncoded);
+
+        //handle signature
+
+        const valueToHash = anchorID+newHashLinkSSI+zkpValue;
+
+        const signature65 = getSignature(seedSSI,valueToHash,newHashLinkSSI,zkpValue,lastHashLinkSSI,publicKeyEncoded);
 
 
-        const result = await anchorContract.methods.addAnchor("anchorID1", "keySSIType", "0x0AA0",
-            "vn", "newHashLinkSSI", "ZKPValue", "lastHashLinkSSI",
-            "0x00AA", "0x00AA").send({
+        const result = await anchorContract.methods.addAnchor(anchorID, keySSIType, controlSubstring,
+            versionNumber, newHashLinkSSI, zkpValue, lastHashLinkSSI,
+            signature65, prefixedPublicKey).send({
             from: accounts[0],
             gas: 3000000
         });
 
         assert.equal(result.events.InvokeStatus.returnValues.statusCode, 200);
 
-        const anchors = await anchorContract.methods.getAnchorVersions("anchorID1").call();
+        const anchors = await anchorContract.methods.getAnchorVersions(anchorID).call();
 
-        assert.equal(anchors[0].ZKPValue, "ZKPValue");
-        assert.equal(anchors[0].hash.newHashLinkSSI, "newHashLinkSSI");
-        assert.equal(anchors[0].hash.lastHashLinkSSI, "lastHashLinkSSI");
+        assert.equal(anchors[0].ZKPValue, zkpValue);
+        assert.equal(anchors[0].hash.newHashLinkSSI, newHashLinkSSI);
+        assert.equal(anchors[0].hash.lastHashLinkSSI, lastHashLinkSSI);
         assert.equal(anchors.length, 1);
-
     });
 
-    it('anchor versions for the same anchorID must be in sync in order to be comited', async() => {
-        const result = await anchorContract.methods.addAnchor("anchorID1", "keySSIType", "0x0AA0",
-            "vn", "newHashLinkSSI", "ZKPValue", "lastHashLinkSSI",
-            "0x00AA", "0x00AA").send({
-            from: accounts[0],
-            gas: 3000000
-        });
-
-        assert.equal(result.events.InvokeStatus.returnValues.statusCode, 200);
-
-        const result2 = await anchorContract.methods.addAnchor("anchorID1", "keySSIType", "0x0AA0",
-            "vn", "newHashLinkSSI", "ZKPValue", "lastHashLinkSSI",
-            "0x00AA", "0x00AA").send({
-            from: accounts[0],
-            gas: 3000000
-        });
-
-        assert.equal(result2.events.InvokeStatus.returnValues.statusCode, 100);
-    });
-
-    it('anchor versions in sync for the same anchorID can be commited', async() => {
-        const result = await anchorContract.methods.addAnchor("anchorID1", "keySSIType", "0x0AA0",
-            "vn", "newHashLinkSSI", "ZKPValue", "lastHashLinkSSI",
-            "0x00AA", "0x00AA").send({
-            from: accounts[0],
-            gas: 3000000
-        });
-
-        assert.equal(result.events.InvokeStatus.returnValues.statusCode, 200);
-
-        const result2 = await anchorContract.methods.addAnchor("anchorID1", "keySSIType", "0xAA0",
-            "vn", "newHashLinkSSI1", "ZKPValue", "newHashLinkSSI",
-            "0x00AA", "0x00AA").send({
-            from: accounts[0],
-            gas: 3000000
-        });
-
-        assert.equal(result2.events.InvokeStatus.returnValues.statusCode, 200);
-
-
-    });
-
-    it ('check hash opendsu == solidity', async () => {
-        // generate private and public key using OpenDSU
-        const seedSSI = openDSURequire("opendsu").loadApi("keyssi").buildSeedSSI('default', 'teststring', 'control', 'v0', 'hint');
-        const strToBeHashed = "anchorId"+"newHashLinkSSI"+"ZKPValue";
-
-        const openDsuCrypto = openDSURequire("opendsu").loadApi("crypto");
-        const base58encodedHash = openDsuCrypto.sha256(strToBeHashed);
-        //decode the hash
-        const hashDecoded = openDsuCrypto.decode(seedSSI, base58encodedHash).toString('hex');
-        const hashFromSolidity = await anchorContract.methods.getHashToBeChecked("anchorId","newHashLinkSSI","ZKPValue","lastHashLinkSSI").call();
-
-        assert.strictEqual('0x'+hashDecoded, hashFromSolidity);
-    });
-
-    it ('check signature of the hash produced by OPENDSU using sign from ETHERIUM library is accepted by smart contract ', async () => {
-        // generate private and public key using OpenDSU
-
-        const seedSSI = openDSURequire("opendsu").loadApi("keyssi").buildSeedSSI('default', 'teststring', 'control', 'v0', 'hint');
-        const privateKeyPem = seedSSI.getPrivateKey("pem");
-        const privateKeyRaw = seedSSI.getPrivateKey("raw");
-        const publicKeyRaw = seedSSI.getPublicKey("raw");
-
-        const keyObj = {
-            key: privateKeyPem
-        };
-        keyObj.dsaEncoding = 'ieee-p1363';
-        const strToBeHashed = "anchorId"+"newHashLinkSSI"+"ZKPValue";
-
-        const openDsuCrypto = openDSURequire("opendsu").loadApi("crypto");
-        const base58encodedHash = openDsuCrypto.sha256(strToBeHashed);
-        //decode the hash
-        const hashDecoded = openDsuCrypto.decode(seedSSI, base58encodedHash).toString('hex');
-
-
-        //use crypto sign until is implemented in opendsu for {r,s} sign format
-        const sign = require("crypto").createSign("sha256");
-        sign.update(hashDecoded);
-        const signature = sign.sign(keyObj);
-
-        console.log('signature from crypto node js module : ',signature);
-        console.log('signature from crypto node js module :',signature.toString('hex'));
-
-        //use crypto sign until is implemented in opendsu for {r,s} sign format
-        const sign1 = require("crypto").createSign("sha256");
-        sign1.update(hashDecoded);
-        const signature1 = sign1.sign(privateKeyPem);
-
-        console.log('signature1 from crypto node js module : ',signature1);
-        console.log('signature1 from crypto node js module :',signature1.toString('hex'));
-
-        //use crypto sign until is implemented in opendsu for {r,s} sign format
-        const {subtle} = require("@trust/webcrypto");
-        const sigweb = await subtle.sign({name:'ECDSA'},privateKeyPem,hashDecoded);
-
-
-        console.log('sigweb from crypto node js module : ',sigweb);
-        console.log('sigweb from crypto node js module :',sigweb.toString('hex'));
-
-        //sign the hash using ethers library
-        const eth = require('ethers');
-        const hexPrivateKey = "0x"+privateKeyRaw.toString('hex');
-        const signingKey = new eth.utils.SigningKey(hexPrivateKey);
-
-        //decode hash from open dsu
-        const strIntoDigest = openDsuCrypto.decode(seedSSI, base58encodedHash)
-        //sign the obtained hash using ethereum library
-        const signatureEth = signingKey.signDigest(strIntoDigest);
-        console.log(signatureEth);
-        //build the signature by join
-        const signatureJoinedEth = eth.utils.joinSignature(signatureEth);
-        console.log('signatureJoinedEth : ', signatureJoinedEth);
-        const recoveredEthAddress = eth.utils.recoverAddress(strIntoDigest,signatureJoinedEth);
-        console.log('eth recoveredEthAddress : ', recoveredEthAddress);
-
-
-        const ethereumAddressFromEthSign = await anchorContract.methods.getAddressFromHashAndSig("anchorId","newHashLinkSSI","ZKPValue","lastHashLinkSSI",signatureJoinedEth).call();
-        console.log('ethereumAddress using sign from eth : ',ethereumAddressFromEthSign);
-        const solidityEthereumAdressFromPublicKey = await anchorContract.methods.calculateAddress(publicKeyRaw).call();
-        console.log('solidityEthereumAdressFromPublicKey : ',solidityEthereumAdressFromPublicKey);
-
-        const signatureValidated = await anchorContract.methods.validateSignature("anchorId","newHashLinkSSI","ZKPValue","lastHashLinkSSI",signatureJoinedEth,publicKeyRaw).call();
-
-
-        assert.strictEqual(ethereumAddressFromEthSign, solidityEthereumAdressFromPublicKey);
-        assert.strictEqual(signatureValidated, true);
-    });
-    it ('check control string', async () => {
-        // generate private and public key using OpenDSU
-        const seedSSI = openDSURequire("opendsu").loadApi("keyssi").buildSeedSSI('default', 'teststring', 'control', 'v0', 'hint');
-        const publicKeyRaw = seedSSI.getPublicKey("raw");
-
-        const openDsuCrypto = openDSURequire("opendsu").loadApi("crypto");
-        const base58encodedHash = openDsuCrypto.sha256(publicKeyRaw);
-        //decode the hash
-        const hashDecoded = openDsuCrypto.decode(seedSSI, base58encodedHash).toString('hex');
-        //NOTE : in node js we can have hex strings. If prefixed with 0x, they can be send as bytes32 to solidity
-        const result = await anchorContract.methods.validatePublicKeyAndControlString(publicKeyRaw,'0x'+hashDecoded).call();
-        assert.strictEqual(result, true);
-
-
-    });
-    it ('fast test', async () => {
-        const signature = "0x28a2db35a02f1825674cbac0ec013149c8221bacd48bc84dc0b912e77e94997786c5a76b095fcc5072e1e11bddb7b1c0d22619f8c0cc0bb28e9c9c43e09fcf191b";
-        const valtohash = "3JstiXPDGd8K9TH1QbEz1x5Gj7CkQoNsMy4s8ZomirJMJDewo8PYRWVEHJXhY6UznwkDwRhTJJxDUFmg6WS3XT2XXLEXhruFmBh7kmca4v7ujNQLKyWJ8QNQ44P1wSsa3g2jRxf7wHMKnCADtXkaDxybigkuUCicpTgkqCNkE2p1nw";
-        const pubKey = "R2RhcroaqARWBw8Pbe3rj31bTmeaVhSX9zA3cwrwZEtns3HpErTf41QF5NEACs5ZDhWHD3v7hoYireMTtMq8ht9G"; //encoded
-        const anchorid = '3JstiXPDGd8K9TH1QbEz1x5Gj7CkQoNsMy4s8ZomirJMJDewo8PYRWVEHJXhY6UznwkDwRhTJJxDUFmg6WS3XT2X';
-        const newhashlink = 'XLEXhruFmBh7kmca4v7ujNQLKyWJ8QNQ44P1wSsa3g2jRxf7wHMKnCADtXkaDxybigkuUCicpTgkqCNkE2p1nw';
-        //const or =
-
-        //or.enableForEnvironment(or.constants.NODEJS_ENVIRONMENT_TYPE);
-        //end open dsu
-
-        const openDsuCrypto = openDSURequire("opendsu").loadApi("crypto");
-        const publicKeyRaw = openDsuCrypto.decodeBase58(pubKey);
-
-
-
-        const ethereumAddressFromEthSign = await anchorContract.methods.getAddressFromHashAndSig(anchorid,newhashlink,"","",
-            signature).call();
-        console.log('fast test || ethereumAddress using sign from eth : ',ethereumAddressFromEthSign);
-        const solidityEthereumAdressFromPublicKey = await anchorContract.methods.calculateAddress(publicKeyRaw).call();
-        console.log('fast test || solidityEthereumAdressFromPublicKey : ',solidityEthereumAdressFromPublicKey);
-
-        const signatureValidated = await anchorContract.methods.validateSignature(anchorid,newhashlink,"","",
-            signature,publicKeyRaw).call();
-
-
-        assert.strictEqual(ethereumAddressFromEthSign, solidityEthereumAdressFromPublicKey);
-        assert.strictEqual(signatureValidated, true);
-    });
-    it ('TODO : check signature from opendsu is accepted by smart contract', async ( )=> {
-
-        //todo : implement
-
-    });
-
-    it ('check read only anchor', async () => {
+    it ('read only anchors can be added only once', async () => {
         // read only anchors ignore every control field
         //can add only one
         const result = await anchorContract.methods.addAnchor("anchorID", "keySSIType", "0x",
@@ -268,7 +114,7 @@ describe('Anchor Contract', () => {
             gas: 3000000
         });
 
-        assert.equal(result.events.InvokeStatus.returnValues.statusCode, 200);
+        assert.equal(result.events.InvokeStatus.returnValues.statusCode, 201);
 
         const result2 = await anchorContract.methods.addAnchor("anchorID", "keySSIType", "0x",
             "vn", "newHashLinkSSI", "ZKPValue", "lastHashLinkSSI",
@@ -278,9 +124,192 @@ describe('Anchor Contract', () => {
         });
 
         assert.equal(result2.events.InvokeStatus.returnValues.statusCode, 101);
-    })
+    });
+
+
+    it('anchor versions in sync for the same anchorID can be commited', async() => {
+
+        const seedSSI = openDSURequire("opendsu").loadApi("keyssi").buildSeedSSI('default', 'teststring', 'control', 'v0', 'hint');
+        const publicKeyRaw = seedSSI.getPublicKey("raw");
+        const anchorID = seedSSI.getAnchorId();
+        let newHashLinkSSI = "hashLinkSSI1";
+        let lastHashLinkSSI = "hashLinkSSI1";
+
+        const openDsuUtils = require('../../ApiAdaptor/utils/opendsuutils');
+        const keySSI = Buffer.from(openDsuUtils.decodeBase58(anchorID)).toString().split(':');
+        let controlSubstring = Buffer.from(openDsuUtils.decodeBase58(keySSI[4])).toString('hex');
+        const versionNumber = keySSI[5];
+        const keySSIType = keySSI[1];
+        const zkpValue = "zkp";
+
+        const openDsuCrypto = openDSURequire("opendsu").loadApi("crypto");
+
+        //prepare for smartcontract
+        controlSubstring = '0x'+controlSubstring;
+        console.log("controlSubstring:",controlSubstring);
+        const publicKeyEncoded = openDsuCrypto.encodeBase58(publicKeyRaw);
+        const prefixedPublicKey = require("../../ApiAdaptor/controllers/addAnchor").getPublicKeyForSmartContract(publicKeyEncoded);
+
+        //handle signature
+
+        let valueToHash = anchorID+newHashLinkSSI+zkpValue;
+
+        let signature65 = getSignature(seedSSI,valueToHash,newHashLinkSSI,zkpValue,lastHashLinkSSI,publicKeyEncoded);
+
+
+        let result = await anchorContract.methods.addAnchor(anchorID, keySSIType, controlSubstring,
+            versionNumber, newHashLinkSSI, zkpValue, lastHashLinkSSI,
+            signature65, prefixedPublicKey).send({
+            from: accounts[0],
+            gas: 3000000
+        });
+
+        assert.equal(result.events.InvokeStatus.returnValues.statusCode, 200);
+
+        newHashLinkSSI = "hashLinkSSI2";
+        lastHashLinkSSI = "hashLinkSSI1";
+
+        valueToHash = anchorID+newHashLinkSSI+zkpValue+lastHashLinkSSI;
+
+        signature65 = getSignature(seedSSI,valueToHash,newHashLinkSSI,zkpValue,lastHashLinkSSI,publicKeyEncoded);
+
+
+        result = await anchorContract.methods.addAnchor(anchorID, keySSIType, controlSubstring,
+            versionNumber, newHashLinkSSI, zkpValue, lastHashLinkSSI,
+            signature65, prefixedPublicKey).send({
+            from: accounts[0],
+            gas: 3000000
+        });
+
+        assert.equal(result.events.InvokeStatus.returnValues.statusCode, 200);
+
+        const anchors = await anchorContract.methods.getAnchorVersions(anchorID).call();
+
+        assert.equal(anchors.length, 2);
+    });
+
+    it ('cannot update anchor with empty control string' , async () => {
+
+        const seedSSI = openDSURequire("opendsu").loadApi("keyssi").buildSeedSSI('default', 'teststring', 'control', 'v0', 'hint');
+        const publicKeyRaw = seedSSI.getPublicKey("raw");
+        const anchorID = seedSSI.getAnchorId();
+        let newHashLinkSSI = "hashLinkSSI1";
+        let lastHashLinkSSI = "hashLinkSSI1";
+
+        const openDsuUtils = require('../../ApiAdaptor/utils/opendsuutils');
+        const keySSI = Buffer.from(openDsuUtils.decodeBase58(anchorID)).toString().split(':');
+        let controlSubstring = Buffer.from(openDsuUtils.decodeBase58(keySSI[4])).toString('hex');
+        const versionNumber = keySSI[5];
+        const keySSIType = keySSI[1];
+        const zkpValue = "zkp";
+
+        const openDsuCrypto = openDSURequire("opendsu").loadApi("crypto");
+
+        //prepare for smartcontract
+        controlSubstring = '0x'+controlSubstring;
+        console.log("controlSubstring:",controlSubstring);
+        const publicKeyEncoded = openDsuCrypto.encodeBase58(publicKeyRaw);
+        let prefixedPublicKey = require("../../ApiAdaptor/controllers/addAnchor").getPublicKeyForSmartContract(publicKeyEncoded);
+
+        //handle signature
+
+        let valueToHash = anchorID+newHashLinkSSI+zkpValue;
+
+        let signature65 = getSignature(seedSSI,valueToHash,newHashLinkSSI,zkpValue,lastHashLinkSSI,publicKeyEncoded);
+
+
+        let result = await anchorContract.methods.addAnchor(anchorID, keySSIType, controlSubstring,
+            versionNumber, newHashLinkSSI, zkpValue, lastHashLinkSSI,
+            signature65, prefixedPublicKey).send({
+            from: accounts[0],
+            gas: 3000000
+        });
+
+        assert.equal(result.events.InvokeStatus.returnValues.statusCode, 200);
+
+        newHashLinkSSI = "hashLinkSSI2";
+        lastHashLinkSSI = "hashLinkSSI1";
+
+        //assume control string empty as ConstSSI
+        controlSubstring = "0x00";
+        signature65 = "0x00";
+        prefixedPublicKey = "0x00";
+
+        result = await anchorContract.methods.addAnchor(anchorID, keySSIType, controlSubstring,
+            versionNumber, newHashLinkSSI, zkpValue, lastHashLinkSSI,
+            signature65, prefixedPublicKey).send({
+            from: accounts[0],
+            gas: 3000000
+        });
+
+        //it will fail to controlstring validation
+        assert.equal(result.events.InvokeStatus.returnValues.statusCode, 102);
+    });
+
+    if ('invalid signature will not be accepted', async () => {
+        const seedSSI = openDSURequire("opendsu").loadApi("keyssi").buildSeedSSI('default', 'teststring', 'control', 'v0', 'hint');
+        const publicKeyRaw = seedSSI.getPublicKey("raw");
+        const anchorID = seedSSI.getAnchorId();
+        let newHashLinkSSI = "hashLinkSSI1";
+        let lastHashLinkSSI = "hashLinkSSI1";
+
+        const openDsuUtils = require('../../ApiAdaptor/utils/opendsuutils');
+        const keySSI = Buffer.from(openDsuUtils.decodeBase58(anchorID)).toString().split(':');
+        let controlSubstring = Buffer.from(openDsuUtils.decodeBase58(keySSI[4])).toString('hex');
+        const versionNumber = keySSI[5];
+        const keySSIType = keySSI[1];
+        const zkpValue = "zkp";
+
+        const openDsuCrypto = openDSURequire("opendsu").loadApi("crypto");
+
+        //prepare for smartcontract
+        controlSubstring = '0x'+controlSubstring;
+        console.log("controlSubstring:",controlSubstring);
+        const publicKeyEncoded = openDsuCrypto.encodeBase58(publicKeyRaw);
+        let prefixedPublicKey = require("../../ApiAdaptor/controllers/addAnchor").getPublicKeyForSmartContract(publicKeyEncoded);
+
+        //handle signature
+
+        //build wrong hash to obtain a wrong signature
+        let valueToHash = anchorID+newHashLinkSSI+zkpValue+lastHashLinkSSI;
+        let signature65 = getSignature(seedSSI,valueToHash,newHashLinkSSI,zkpValue,lastHashLinkSSI,publicKeyEncoded);
+
+
+        result = await anchorContract.methods.addAnchor(anchorID, keySSIType, controlSubstring,
+            versionNumber, newHashLinkSSI, zkpValue, lastHashLinkSSI,
+            signature65, prefixedPublicKey).send({
+            from: accounts[0],
+            gas: 3000000
+        });
+
+        assert.equal(result.events.InvokeStatus.returnValues.statusCode, 103);
+
+        //try with empty signature
+        result = await anchorContract.methods.addAnchor(anchorID, keySSIType, controlSubstring,
+            versionNumber, newHashLinkSSI, zkpValue, lastHashLinkSSI,
+            "0x00", prefixedPublicKey).send({
+            from: accounts[0],
+            gas: 3000000
+        });
+
+        assert.equal(result.events.InvokeStatus.returnValues.statusCode, 103);
+    });
+
 });
 
 
 
+function getSignature(seedSSI,valueToHash,newHashLinkSSI,zkpValue,lastHashLinkSSI,publicKeyEncoded){
+    const openDsuCrypto = openDSURequire("opendsu").loadApi("crypto");
+    const anchorID = seedSSI.getAnchorId();
 
+    const privateKeyPem = seedSSI.getPrivateKey("pem");
+    const sign = require("crypto").createSign("sha256");
+    sign.update(valueToHash);
+    const signature = sign.sign(privateKeyPem);
+    const encodedSignatureDer = openDsuCrypto.encodeBase58(signature);
+    const signature65 = require("../../ApiAdaptor/controllers/addAnchor").getSignatureForSmartContract(encodedSignatureDer,anchorID,
+        newHashLinkSSI,zkpValue,lastHashLinkSSI,publicKeyEncoded);
+
+    return signature65;
+}
