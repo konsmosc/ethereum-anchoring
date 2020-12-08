@@ -127,7 +127,7 @@ describe('Anchor Contract', () => {
     });
 
 
-    it('anchor versions in sync for the same anchorID can be commited', async() => {
+    it('anchor versions in sync for the same anchorID can be committed', async() => {
 
         const seedSSI = openDSURequire("opendsu").loadApi("keyssi").buildSeedSSI('default', 'teststring', 'control', 'v0', 'hint');
         const publicKeyRaw = seedSSI.getPublicKey("raw");
@@ -246,7 +246,7 @@ describe('Anchor Contract', () => {
         assert.equal(result.events.InvokeStatus.returnValues.statusCode, 102);
     });
 
-    if ('invalid signature will not be accepted', async () => {
+    it ('invalid signature will not be accepted', async () => {
         const seedSSI = openDSURequire("opendsu").loadApi("keyssi").buildSeedSSI('default', 'teststring', 'control', 'v0', 'hint');
         const publicKeyRaw = seedSSI.getPublicKey("raw");
         const anchorID = seedSSI.getAnchorId();
@@ -270,10 +270,14 @@ describe('Anchor Contract', () => {
 
         //handle signature
 
-        //build wrong hash to obtain a wrong signature
+        //build wrong hash
         let valueToHash = anchorID+newHashLinkSSI+zkpValue+lastHashLinkSSI;
-        let signature65 = getSignature(seedSSI,valueToHash,newHashLinkSSI,zkpValue,lastHashLinkSSI,publicKeyEncoded);
+        assert.throws(() => {
+            let signature65 = getSignature(seedSSI,valueToHash,newHashLinkSSI,zkpValue,lastHashLinkSSI,publicKeyEncoded);
+        });
 
+        // use some other signature
+        let signature65 = "0xe9c9d861de9af8ed0906950714dd3f14d7095232f609f130f4c7a91c6f84b49b101c05c81ff186c5c9e6f0e26122fea1ee9c6aad68d68e624877d8aa5a8b33431b";
 
         result = await anchorContract.methods.addAnchor(anchorID, keySSIType, controlSubstring,
             versionNumber, newHashLinkSSI, zkpValue, lastHashLinkSSI,
