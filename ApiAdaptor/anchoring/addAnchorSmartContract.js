@@ -12,7 +12,7 @@ function addAnchor(anchorFactory, account,
         signature, publicKey).send({from: account, gas: 1500000}).then((f) => {
         const statusCode = f.events.InvokeStatus.returnValues.statusCode.toString().trim();
         console.log("Smart contract status code : ", statusCode);
-        if (statusCode === "200") {
+        if (statusCode === "200" || statusCode === "201") {
             callback(null, "Success");
         } else {
             console.log("execute callback error : status code : <", statusCode, ">, EVAL :", statusCode === "200");
