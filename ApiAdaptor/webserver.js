@@ -46,7 +46,7 @@ function configureHeaders(webServer) {
 function configureAddAnchorEntryPoints(webServer, config) {
     const factory = require('./anchoring/anchorFactory');
     const anchorFactory = new factory(config.rpcAddress, config.contractAddress, config.abi, config.account);
-    const addAnchorHandler = require("./controllers/addAnchor")(anchorFactory, config.account);
+    const addAnchorHandler = require("./controllers/addAnchor").createAddAnchorHandler(anchorFactory, config.account);
     webServer.use("/addAnchor/*", requestBodyJSONMiddleware);
     webServer.put("/addAnchor/:keySSI", addAnchorHandler);
 }

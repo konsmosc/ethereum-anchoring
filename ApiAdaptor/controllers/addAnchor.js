@@ -1,5 +1,3 @@
-const {encode, decode} = require('base58-universal');
-
 
 function createAddAnchorHandler(anchorFactory, account) {
     return function (request, response, next) {
@@ -7,7 +5,7 @@ function createAddAnchorHandler(anchorFactory, account) {
         const anchorID = request.params.keySSI;
 
         const body = request.body;
-        console.log(body);
+        console.log("body received : ", body);
         try {
             if (body.hash.newHashLinkSSI === undefined || body.hash.lastHashLinkSSI === undefined) {
                 console.log('Invalid body', body);
@@ -19,8 +17,9 @@ function createAddAnchorHandler(anchorFactory, account) {
         }
 
         try {
-            const keySSI = Buffer.from(decode(anchorID)).toString().split(':');
-            // console.log("Decoded from", anchorID," into KEYSSI : ", keySSI);
+            const openDsuUtils = require('../utils/opendsuutils');
+            const keySSI = Buffer.from(openDsuUtils.decodeBase58(anchorID)).toString().split(':');
+            console.log("Decoded from", anchorID," into KEYSSI : ", keySSI);
             /*
              string anchorID - addAnchor param
              string keySSIType - keySSI[1]
@@ -33,7 +32,7 @@ function createAddAnchorHandler(anchorFactory, account) {
              string publicKey - body.digitalProof.publicKey
              */
 
-            let controlSubstring = Buffer.from(decode(keySSI[4])).toString('hex');
+            let controlSubstring = Buffer.from(openDsuUtils.decodeBase58(keySSI[4])).toString('hex');
             const versionNumber = keySSI[5];
             const keySSIType = keySSI[1];
             const newHashLinkSSI = body.hash.newHashLinkSSI;
@@ -44,39 +43,23 @@ function createAddAnchorHandler(anchorFactory, account) {
             let prefixedPublicKey;
             if (controlSubstring === "")
             {
+                //ConstSSI
                signature65 = "0x00";
                prefixedPublicKey = "0x00";
                controlSubstring = "0x00";
             }
             else {
                 controlSubstring = '0x'+controlSubstring;
-                //handle signature
-
-                const openDsuUtils = require('../utils/opendsuutils');
-                console.log('signature : ', body.digitalProof.signature);
-                const derSignature = openDsuUtils.decodeBase58(body.digitalProof.signature);
-                const signature64 = openDsuUtils.convertDerSignatureToASN1(Buffer.from(derSignature,'hex'));
-
 
                 //handle public key
-                console.log('public key : ',body.digitalProof.publicKey);
-                const publicKey = openDsuUtils.decodeBase58(body.digitalProof.publicKey);
-                prefixedPublicKey = '0x'+publicKey.toString('hex');
-                console.log('prefixed pub key : ', prefixedPublicKey);
+                prefixedPublicKey = getPublicKeyForSmartContract(body.digitalProof.publicKey);
 
-                const valueToHash = anchorID+newHashLinkSSI
-                    + zkpValue
-                    + (newHashLinkSSI === lastHashLinkSSI || lastHashLinkSSI === '' ? '' : lastHashLinkSSI)
-                console.log('value to hash : ',valueToHash);
-                signature65 = require('../utils/eth').getVSignature(signature64,publicKey,valueToHash);
-
-                console.log ('signature send to smart contract : ', signature65);
+                //handle signature
+                signature65 = getSignatureForSmartContract(body.digitalProof.signature,anchorID,
+                    newHashLinkSSI,zkpValue,lastHashLinkSSI,body.digitalProof.publicKey);
             }
 
 
-
-            //  console.log(keySSI);
-            //  console.log({controlSubstring,versionNumber,keySSIType});
             require("../anchoring/addAnchorSmartContract")(anchorFactory.contract, account,
                 anchorID, keySSIType, controlSubstring,
                 versionNumber, newHashLinkSSI, zkpValue, lastHashLinkSSI,
@@ -97,7 +80,6 @@ function createAddAnchorHandler(anchorFactory, account) {
                         console.log("------------------------------------------------------")
                         return response.status(428).send("Smart contract invocation failed");
                     }
-                    //anchorFactory.waitForFullCommit();
                     console.log("response AddAnchor 200", anchorID);
                     return response.status(200).send(result);
                 })
@@ -114,5 +96,40 @@ function createAddAnchorHandler(anchorFactory, account) {
     }
 }
 
+function getPublicKeyForSmartContract(publicKeyRaw)
+{
+    const openDsuUtils = require('../utils/opendsuutils');
+    console.log('public key RAW : ',publicKeyRaw);
+    const publicKey = openDsuUtils.decodeBase58(publicKeyRaw);
+    const prefixedPublicKey = '0x'+publicKey.toString('hex');
+    console.log('prefixed pub key : ', prefixedPublicKey);
 
-module.exports = createAddAnchorHandler;
+    return prefixedPublicKey;
+}
+
+function getSignatureForSmartContract(signatureDERFormatEncoded,anchorID,newHashLinkSSI,zkpValue,lastHashLinkSSI,publicKeyRaw)
+{
+    const openDsuUtils = require('../utils/opendsuutils');
+    console.log('signature : ', signatureDERFormatEncoded);
+    const derSignature = openDsuUtils.decodeBase58(signatureDERFormatEncoded);
+    const signature64 = openDsuUtils.convertDerSignatureToASN1(Buffer.from(derSignature,'hex'));
+    const publicKey = openDsuUtils.decodeBase58(publicKeyRaw);
+
+
+
+    const valueToHash = anchorID+newHashLinkSSI
+        + zkpValue
+        + (newHashLinkSSI === lastHashLinkSSI || lastHashLinkSSI === '' ? '' : lastHashLinkSSI)
+    console.log('value to hash : ',valueToHash);
+    const signature65 = require('../utils/eth').getVSignature(signature64,publicKey,valueToHash);
+
+    console.log ('signature send to smart contract : ', signature65);
+
+    return signature65;
+}
+
+module.exports = {
+    createAddAnchorHandler,
+    getSignatureForSmartContract,
+    getPublicKeyForSmartContract
+};
