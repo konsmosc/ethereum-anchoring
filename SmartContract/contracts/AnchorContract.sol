@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity >= 0.5.0 <= 0.7.4;
 pragma experimental ABIEncoderV2;
 
@@ -13,13 +14,9 @@ contract AnchorContract {
 
     event InvokeStatus(uint indexed statusCode);
 
-    struct AnchorHash {
+    struct AnchorValue {
         string newHashLinkSSI;
         string lastHashLinkSSI;
-    }
-
-    struct AnchorValue {
-        AnchorHash hash;
         string ZKPValue;
     }
 
@@ -34,15 +31,13 @@ contract AnchorContract {
     //mapping for read only anchors
     mapping (string => bool) readOnlyAnchorVersions;
 
-    constructor() public {
-
+    constructor() {
 
     }
 
-
     // public function
-    function addAnchor(string memory anchorID, string memory keySSIType, bytes32 controlString,
-        string memory vn, string memory newHashLinkSSI, string memory ZKPValue, string memory lastHashLinkSSI,
+    function addAnchor(string memory anchorID, bytes32 controlString,
+        string memory newHashLinkSSI, string memory ZKPValue, string memory lastHashLinkSSI,
         bytes memory signature, bytes memory publicKey) public {
 
             //check if thew anchorID can accept updates
@@ -78,7 +73,7 @@ contract AnchorContract {
             }
 
             //validate hash of the publicKey
-            if (validatePublicKeyHash(publicKey,anchorID) == -1)
+            if (!validatePublicKey(publicKey,anchorID))
             {
                 emit InvokeStatus(statusHashOfPublicKeyDoesntMatchControlString);
                 return;
@@ -123,61 +118,10 @@ contract AnchorContract {
         // mark the anchorID as read only
         readOnlyAnchorVersions[anchorID] = true;
     }
-
-    function validatePublicKeyAndControlString(bytes memory publicKey,bytes32 controlString) private pure returns (bool)
-    {
-        return (sha256(publicKey) == controlString);
+    
+    function validatePublicKey(bytes memory publicKey,string memory controlString) private view returns (bool){
+        return (sha256(publicKey) == anchorControlStrings[controlString]);
     }
-
-
-    function validatePublicKeyHash(bytes memory publicKey, string memory anchorID) private view returns (int)
-    {
-        bytes32 controlString =  anchorControlStrings[anchorID];
-        if (validatePublicKeyAndControlString(publicKey,controlString))
-        {
-            //we have match. All is ok.
-            return 1;
-        }
-
-        //validation failed
-        return -1;
-    }
-
-    function recover(bytes32 hash, bytes memory signature) private pure returns (address)
-    {
-        bytes32 r;
-        bytes32 s;
-        uint8 v;
-
-        // Check the signature length
-        if (signature.length != 65) {
-            return (address(0));
-        }
-
-        // Divide the signature in r, s and v variables
-        // ecrecover takes the signature parameters, and the only way to get them
-        // currently is to use assembly.
-        // solium-disable-next-line security/no-inline-assembly
-        assembly {
-            r := mload(add(signature, 32))
-            s := mload(add(signature, 64))
-            v := byte(0, mload(add(signature, 96)))
-        }
-
-        // Version of signature should be 27 or 28, but 0 and 1 are also possible versions
-        if (v < 27) {
-            v += 27;
-        }
-
-        // If the version is correct return the signer address
-        if (v != 27 && v != 28) {
-            return (address(0));
-        } else {
-            // solium-disable-next-line arg-overflow
-            return ecrecover(hash, v, r, s);
-        }
-    }
-
 
     function validateSignature(string memory anchorID,string memory newHashLinkSSI,string memory ZKPValue,
         string memory lastHashLinkSSI, bytes memory signature, bytes memory publicKey) private view returns (bool)
@@ -220,6 +164,41 @@ contract AnchorContract {
         //return the public key derivation
         return recover(getHashToBeChecked(anchorID,newHashLinkSSI,ZKPValue,lastHashLinkSSI), signature);
     }
+    
+    function recover(bytes32 hash, bytes memory signature) private pure returns (address)
+    {
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+
+        // Check the signature length
+        if (signature.length != 65) {
+            return (address(0));
+        }
+
+        // Divide the signature in r, s and v variables
+        // ecrecover takes the signature parameters, and the only way to get them
+        // currently is to use assembly.
+        // solium-disable-next-line security/no-inline-assembly
+        assembly {
+            r := mload(add(signature, 32))
+            s := mload(add(signature, 64))
+            v := byte(0, mload(add(signature, 96)))
+        }
+
+        // Version of signature should be 27 or 28, but 0 and 1 are also possible versions
+        if (v < 27) {
+            v += 27;
+        }
+
+        // If the version is correct return the signer address
+        if (v != 27 && v != 28) {
+            return (address(0));
+        } else {
+            // solium-disable-next-line arg-overflow
+            return ecrecover(hash, v, r, s);
+        }
+    }
 
     function getHashToBeChecked(string memory anchorID,string memory newHashLinkSSI,string memory ZKPValue,
         string memory lastHashLinkSSI) private view returns (bytes32)
@@ -231,19 +210,14 @@ contract AnchorContract {
         }
             return sha256(abi.encodePacked(anchorID,newHashLinkSSI,ZKPValue,lastHashLinkSSI));
     }
-
+    
+    // Used in addAnchor
     function isAnchorReadOnly(string memory anchorID) private view returns(bool)
     {
-        if (readOnlyAnchorVersions[anchorID])
-        {
-                //anchor is read only
-                return true;
-        }
-
-        //anchor is not read only
-        return false;
+        return readOnlyAnchorVersions[anchorID];
     }
 
+    // Used in addAnchor
     function validateAnchorContinuity(string memory anchorID, string memory lastHashLinkSSI, string memory newHashLinkSSI) private view returns (int)
     {
         if (anchorVersions[anchorID].length == 0)
@@ -255,7 +229,7 @@ contract AnchorContract {
 
         //can import StringUtils contract or compare hashes
         //hash compare seems faster
-        if (sha256(bytes(anchorStorage[index].hash.newHashLinkSSI)) == sha256(bytes(lastHashLinkSSI)))
+        if (sha256(bytes(anchorStorage[index].newHashLinkSSI)) == sha256(bytes(lastHashLinkSSI)))
         {
             //ensure we dont get double hashLinkSSI
             if (sha256(bytes(newHashLinkSSI)) == sha256(bytes(lastHashLinkSSI)))
@@ -271,12 +245,7 @@ contract AnchorContract {
     }
 
     function buildAnchorValue(string memory newHashLinkSSI, string memory lastHashLinkSSI, string memory ZKPValue) private pure returns (AnchorValue memory){
-        AnchorHash memory anchorHash = AnchorHash(newHashLinkSSI, lastHashLinkSSI);
-        return AnchorValue(anchorHash, ZKPValue);
-    }
-
-    function copyAnchorValue(AnchorValue memory anchorValue) private pure returns (AnchorValue memory){
-        return buildAnchorValue(anchorValue.hash.newHashLinkSSI, anchorValue.hash.lastHashLinkSSI, anchorValue.ZKPValue);
+        return AnchorValue(newHashLinkSSI, lastHashLinkSSI, ZKPValue);
     }
 
     // public function
@@ -288,7 +257,7 @@ contract AnchorContract {
         uint[] memory indexList = anchorVersions[anchor];
         AnchorValue[] memory result = new AnchorValue[] (indexList.length);
         for (uint i=0;i<indexList.length;i++){
-            result[i] = copyAnchorValue(anchorStorage[indexList[i]]);
+            result[i] = anchorStorage[indexList[i]];
         }
 
         return result;
@@ -297,14 +266,9 @@ contract AnchorContract {
 
 
     //utility functions
-
-    function isEmptyBytes32(bytes32 data) public pure returns (bool)
+    function isEmptyBytes32(bytes32 data) private pure returns (bool)
     {
         return data[0] == 0;
     }
-
-
-
-
 
 }
